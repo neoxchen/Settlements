@@ -15,7 +15,6 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -32,40 +31,8 @@ import java.util.Optional;
 
 public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
 
-    /**
-     * How long before the villager searches around for golems to heal
-     */
-    private static final int SCAN_INTERVAL_TICKS = TimeUtil.seconds(20);
+    private static final ItemStack IRON_INGOT = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.IRON_INGOT).build());
 
-    /**
-     * Golems that are further away from this distance will be ignored
-     */
-    private static final double SCAN_RANGE_SQUARED = Math.pow(30, 2);
-    /**
-     * Only engage in repairing mode within this distance from the golem
-     */
-    private static final double INTERACT_RANGE_SQUARED = Math.pow(2, 2);
-
-    /**
-     * Maximum number of ticks that can be spent in navigation
-     * - terminates behavior if exceeds
-     */
-    private static final int MAX_NAVIGATION_TICKS = TimeUtil.seconds(20);
-    /**
-     * Maximum number of ticks that can be spent in repairing
-     * - terminates behavior if exceeds
-     */
-    private static final int MAX_INTERACTION_TICKS = TimeUtil.seconds(10);
-
-    /**
-     * How long before the villager can repair another golem
-     */
-    private static final int COOLDOWN_TICKS = TimeUtil.minutes(2);
-
-    /**
-     * The repair speed of the villager, aka the interval of healing the golem
-     */
-    private static final int REPAIR_INTERVAL_TICKS = TimeUtil.seconds(2);
     /**
      * The amount of HP to heal per repair action
      * - 1-5: novice, apprentice, journeyman, expert, master
@@ -83,8 +50,6 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
      */
     private static final double REPAIR_WHEN_BELOW_HP_PERCENTAGE = 0.999;
 
-    private int ticksBeforeNextRepair;
-
     @Nullable
     private IronGolem targetGolem;
 
@@ -97,11 +62,11 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
                         MemoryModuleType.GOLEM_DETECTED_RECENTLY, MemoryStatus.VALUE_PRESENT,
                         // There should be living entities nearby
                         MemoryModuleType.NEAREST_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
-                ), MAX_NAVIGATION_TICKS + MAX_INTERACTION_TICKS,
-                SCAN_INTERVAL_TICKS, SCAN_RANGE_SQUARED, INTERACT_RANGE_SQUARED,
-                COOLDOWN_TICKS, MAX_NAVIGATION_TICKS, MAX_INTERACTION_TICKS);
+                ), TimeUtil.seconds(20), Math.pow(30, 2),
+                TimeUtil.minutes(2), Math.pow(2, 2),
+                5, TimeUtil.seconds(2),
+                TimeUtil.seconds(20), TimeUtil.seconds(10));
 
-        this.ticksBeforeNextRepair = 0;
         this.targetGolem = null;
     }
 
@@ -110,11 +75,6 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
      */
     @Override
     protected boolean scan(ServerLevel level, Villager self) {
-        // If profession is not armorer, tool smith, or weapon smith, ignore
-        VillagerProfession profession = self.getVillagerData().getProfession();
-        if (profession != VillagerProfession.ARMORER && profession != VillagerProfession.TOOLSMITH && profession != VillagerProfession.WEAPONSMITH)
-            return false;
-
         Brain<Villager> brain = self.getBrain();
 
         // If there are no nearby living entities, ignore
@@ -124,8 +84,7 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
         if (this.targetGolem == null) {
             // Check for nearby iron golems
             List<LivingEntity> target = brain.getMemory(MemoryModuleType.NEAREST_LIVING_ENTITIES).get();
-            Optional<LivingEntity> nearestGolem =
-                    target.stream().filter(e -> e.getType() == EntityType.IRON_GOLEM && this.needHealing(e)).findFirst();
+            Optional<LivingEntity> nearestGolem = target.stream().filter(e -> e.getType() == EntityType.IRON_GOLEM && this.needHealing(e)).findFirst();
 
             // If no nearby iron golems, ignore
             if (nearestGolem.isEmpty())
@@ -147,12 +106,7 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
     protected boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime) {
         if (this.targetGolem == null || this.targetGolem.isDeadOrDying())
             return false;
-
-        // If golem does not need healing, stop
-        if (!this.needHealing(this.targetGolem))
-            return false;
-
-        return true;
+        return this.needHealing(this.targetGolem);
     }
 
     @Override
@@ -161,42 +115,35 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void tick(ServerLevel level, Villager self, long gameTime) {
-        // End behavior immediately if golem is null by setting time limit to exceeded
-        if (this.targetGolem == null) {
-            this.setTicksSpentNavigating(this.getMaxNavigationTicks());
-            this.setTicksSpentInteracting(this.getMaxInteractionTicks());
-            return;
-        }
-
-        self.setItemSlot(EquipmentSlot.MAINHAND, CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.IRON_INGOT).build()));
+    protected void tickExtra(ServerLevel level, Villager self, long gameTime) {
+        self.setItemSlot(EquipmentSlot.MAINHAND, IRON_INGOT);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
+    }
+
+    @Override
+    protected void navigateToTarget(ServerLevel level, Villager self, long gameTime) {
+        // Safety check
+        if (this.targetGolem == null)
+            return;
 
         // Walk to the target golem
         self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetGolem, true));
         self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetGolem, 0.5F, 1));
         self.getLookControl().setLookAt(this.targetGolem);
+    }
 
-        // If not close to the golem, don't repair
-        if (self.distanceToSqr(this.targetGolem) > this.getInteractRangeSquared()) {
-            this.setTicksSpentNavigating(this.getTicksSpentNavigating() + 1);
+    @Override
+    protected void interactWithTarget(ServerLevel level, Villager self, long gameTime) {
+        // Safety check
+        if (this.targetGolem == null)
             return;
-        }
-
-        // We are at the golem
-        this.setTicksSpentInteracting(this.getTicksSpentInteracting() + 1);
 
         // TODO: have the golem look at the villager
 //        this.targetGolem.lookAt(self, 30f, 30f);
 //        this.targetGolem.getLookControl().setLookAt(self);
 
-        // Check if we should repair now or wait
-        if (--this.ticksBeforeNextRepair > 0)
-            return;
-
         // Heal golem
-        this.targetGolem.heal(REPAIR_AMOUNT_MAP.getOrDefault(self.getVillagerData().getLevel(), 5F),
-                EntityRegainHealthEvent.RegainReason.CUSTOM);
+        this.targetGolem.heal(REPAIR_AMOUNT_MAP.getOrDefault(self.getVillagerData().getLevel(), 5F), EntityRegainHealthEvent.RegainReason.CUSTOM);
 
         // TODO: random chance to offer flower?
 //        if (RandomUtil.RANDOM.nextDouble() < 0.2)
@@ -207,9 +154,6 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
                 this.targetGolem.getZ());
         ParticleUtil.globalParticle(golemLocation, Particle.WAX_OFF, 25, 0.4, 0.6, 0.4, 1);
         SoundUtil.playSoundPublic(golemLocation, Sound.ENTITY_VILLAGER_WORK_TOOLSMITH, 0.7f);
-
-        // Set repair cooldown
-        this.ticksBeforeNextRepair = REPAIR_INTERVAL_TICKS;
     }
 
     @Override
@@ -221,17 +165,22 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
         self.getBrain().eraseMemory(MemoryModuleType.INTERACTION_TARGET);
 
         // Reset variables
-        this.setTicksSpentNavigating(0);
-        this.setTicksSpentInteracting(0);
-        this.setCooldown(this.getMaxCooldownTicks());
+        this.cooldown = this.getInteractCooldownTicks();
 
-        this.ticksBeforeNextRepair = 0;
+        this.ticksSpentNavigating = 0;
+        this.ticksSpentInteracting = 0;
+
         this.targetGolem = null;
     }
 
     @Override
     protected boolean hasTarget() {
         return this.targetGolem != null;
+    }
+
+    @Override
+    protected boolean isTargetReachable(Villager self) {
+        return this.targetGolem != null && self.distanceToSqr(this.targetGolem) < this.getInteractRangeSquared();
     }
 
     private boolean needHealing(@Nonnull LivingEntity entity) {

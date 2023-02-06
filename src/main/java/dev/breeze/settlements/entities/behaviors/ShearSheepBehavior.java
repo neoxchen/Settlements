@@ -13,7 +13,6 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.animal.Sheep;
 import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_19_R2.inventory.CraftItemStack;
@@ -23,16 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 public final class ShearSheepBehavior extends InteractAtEntityBehavior {
-
-    private static final int SCAN_INTERVAL_TICKS = TimeUtil.seconds(20);
-    private static final double SCAN_RANGE_SQUARED = Math.pow(30, 2);
-    private static final double INTERACT_RANGE_SQUARED = Math.pow(2, 2);
-
-    private static final int MAX_NAVIGATION_TICKS = TimeUtil.seconds(20);
-    private static final int NAVIGATION_COOLDOWN_TICKS = 5;
-    private int navigationCooldown;
-
-    private static final int COOLDOWN_TICKS = 20 * 20; // TODO: 5 minutes
 
     private static final ItemStack SHEARS = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.SHEARS).build());
 
@@ -63,26 +52,17 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
                         MemoryModuleType.INTERACTION_TARGET, MemoryStatus.VALUE_ABSENT,
                         // There should be living entities nearby
                         MemoryModuleType.NEAREST_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
-                ), MAX_NAVIGATION_TICKS + 1,
-                SCAN_INTERVAL_TICKS, SCAN_RANGE_SQUARED, INTERACT_RANGE_SQUARED,
-                COOLDOWN_TICKS, MAX_NAVIGATION_TICKS, 1);
-
-        this.navigationCooldown = 0;
+                ), TimeUtil.seconds(20), Math.pow(30, 2),
+                20 * 20, Math.pow(2, 2),
+                5, 1,
+                TimeUtil.seconds(20), 1);
 
         this.sheepSheared = 0;
         this.targetSheep = null;
     }
 
-    /**
-     * Scans for nearby golems to repair
-     */
     @Override
     protected boolean scan(ServerLevel level, Villager self) {
-        // If profession is not shepherd, ignore
-        VillagerProfession profession = self.getVillagerData().getProfession();
-        if (profession != VillagerProfession.SHEPHERD)
-            return false;
-
         Brain<Villager> brain = self.getBrain();
 
         // If there are no nearby living entities, ignore
@@ -108,10 +88,7 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
             return false;
 
         // If we've reached the maximum number of sheep sheared, stop
-        if (this.sheepSheared >= MAX_SHEAR_COUNT_MAP.get(self.getVillagerData().getLevel()))
-            return false;
-
-        return true;
+        return this.sheepSheared < MAX_SHEAR_COUNT_MAP.get(self.getVillagerData().getLevel());
     }
 
     @Override
@@ -119,35 +96,29 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
         // Do nothing
     }
 
-
     @Override
-    protected void tick(ServerLevel level, Villager self, long gameTime) {
-        // End behavior immediately if target is null
-        if (this.targetSheep == null) {
-            this.setTicksSpentNavigating(this.getMaxNavigationTicks());
-            this.setTicksSpentInteracting(this.getMaxInteractionTicks());
-            return;
-        }
-
+    protected void tickExtra(ServerLevel level, Villager self, long gameTime) {
         self.setItemSlot(EquipmentSlot.MAINHAND, SHEARS);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
+    }
 
-        // Walk to the target
-        if (--this.navigationCooldown < 0) {
-            self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetSheep, true));
-            self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetSheep, 0.5F, 1));
-            self.getLookControl().setLookAt(this.targetSheep);
-
-            this.navigationCooldown = NAVIGATION_COOLDOWN_TICKS;
-        }
-
-        // Check distance to target
-        if (self.distanceToSqr(this.targetSheep) > this.getInteractRangeSquared()) {
-            this.setTicksSpentNavigating(this.getTicksSpentNavigating() + 1);
+    @Override
+    protected void navigateToTarget(ServerLevel level, Villager self, long gameTime) {
+        // Safety check
+        if (this.targetSheep == null)
             return;
-        }
 
-        // We are at the sheep, now shear it
+        self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetSheep, true));
+        self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetSheep, 0.5F, 1));
+        self.getLookControl().setLookAt(this.targetSheep);
+    }
+
+    @Override
+    protected void interactWithTarget(ServerLevel level, Villager self, long gameTime) {
+        // Safety check
+        if (this.targetSheep == null)
+            return;
+
         this.targetSheep.shear(SoundSource.NEUTRAL);
         this.sheepSheared++;
 
@@ -165,9 +136,9 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
         self.getBrain().eraseMemory(MemoryModuleType.INTERACTION_TARGET);
 
         // Reset variables
-        this.setTicksSpentNavigating(0);
-        this.setTicksSpentInteracting(0);
-        this.setCooldown(this.getMaxCooldownTicks());
+        this.ticksSpentNavigating = 0;
+        this.ticksSpentInteracting = 0;
+        this.cooldown = this.getInteractCooldownTicks();
 
         this.sheepSheared = 0;
         this.targetSheep = null;
@@ -176,6 +147,11 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
     @Override
     protected boolean hasTarget() {
         return this.targetSheep != null;
+    }
+
+    @Override
+    protected boolean isTargetReachable(Villager self) {
+        return this.targetSheep != null && self.distanceToSqr(this.targetSheep) < this.getInteractRangeSquared();
     }
 
     @Nullable

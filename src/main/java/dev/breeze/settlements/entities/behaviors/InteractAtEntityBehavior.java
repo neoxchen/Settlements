@@ -2,7 +2,6 @@ package dev.breeze.settlements.entities.behaviors;
 
 import dev.breeze.settlements.utils.MessageUtil;
 import lombok.Getter;
-import lombok.Setter;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -13,78 +12,119 @@ import org.bukkit.entity.Player;
 
 import java.util.Map;
 
-@Getter
-@Setter
 public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
 
     /**
      * The interval between searching nearby entities for the target
      */
-    private final int scanIntervalTicks;
+    @Getter
+    private final int scanCooldownTicks;
     /**
      * Entities outside of this range are ignored
      */
+    @Getter
     private final double scanRangeSquared;
+
+    /**
+     * How long to wait after a successful interaction before scanning again
+     */
+    @Getter
+    private final int interactCooldownTicks;
     /**
      * Only interact with entities within this range
      * - aka the "reach" of the villager
      */
+    @Getter
     private final double interactRangeSquared;
+
+    /**
+     * The delay before navigateToTarget() is called in ticks
+     */
+    @Getter
+    private final int maxNavigationIntervalTicks;
+
+    /**
+     * The delay before interactWithTarget() is called in ticks
+     */
+    @Getter
+    private final int maxInteractionIntervalTicks;
 
     /**
      * Maximum number of ticks that can be spent in navigation
      * - terminates behavior if exceeds
      */
+    @Getter
     private final int maxNavigationTicks;
     /**
      * Maximum number of ticks that can be spent interacting
      * - terminates behavior if exceeds
      */
+    @Getter
     private final int maxInteractionTicks;
-
-    /**
-     * How long to wait after a successful interaction before scanning again
-     */
-    private final int maxCooldownTicks;
 
     /*
      * Dynamic variables
      */
-    private int cooldown;
-    private int ticksSpentNavigating;
-    private int ticksSpentInteracting;
+    /**
+     * Cooldown before the behavior can be run again
+     * - can be set after a successful interaction (interactCooldownTicks)
+     * - or after scanning and detecting no targets (scanCooldownTicks)
+     */
+    protected int cooldown;
 
-    public InteractAtEntityBehavior(Map<MemoryModuleType<?>, MemoryStatus> preconditions, int duration,
-                                    int scanIntervalTicks, double scanRangeSquared, double interactRangeSquared,
-                                    int maxCooldownTicks, int maxNavigationTicks, int maxInteractionTicks) {
-        super(preconditions, duration);
+    protected int navigationIntervalTicksLeft;
+    protected int ticksSpentNavigating;
 
-        this.scanIntervalTicks = scanIntervalTicks;
+    protected int interactionIntervalTicksLeft;
+    protected int ticksSpentInteracting;
+
+    public InteractAtEntityBehavior(Map<MemoryModuleType<?>, MemoryStatus> preconditions,
+                                    int scanCooldownTicks, double scanRangeSquared,
+                                    int interactCooldownTicks, double interactRangeSquared,
+                                    int maxNavigationIntervalTicks, int maxInteractionIntervalTicks,
+                                    int maxNavigationTicks, int maxInteractionTicks) {
+        // Max run time is calculated by the sum of navigation & interaction time
+        super(preconditions, maxNavigationTicks + maxInteractionTicks);
+
+        // Final variables
+        this.scanCooldownTicks = scanCooldownTicks;
         this.scanRangeSquared = scanRangeSquared;
+
+        this.interactCooldownTicks = interactCooldownTicks;
         this.interactRangeSquared = interactRangeSquared;
 
-        this.maxCooldownTicks = maxCooldownTicks;
+        this.maxNavigationIntervalTicks = maxNavigationIntervalTicks;
+        this.maxInteractionIntervalTicks = maxInteractionIntervalTicks;
+
         this.maxNavigationTicks = maxNavigationTicks;
         this.maxInteractionTicks = maxInteractionTicks;
 
-        this.ticksSpentNavigating = 0;
-        this.ticksSpentInteracting = 0;
+        // Dynamic variables
         // Initial cooldown = max cooldown to prevent spamming
-        this.cooldown = this.maxCooldownTicks;
+        this.cooldown = this.interactCooldownTicks;
+
+        this.navigationIntervalTicksLeft = 0;
+        this.ticksSpentNavigating = 0;
+
+        this.interactionIntervalTicksLeft = 0;
+        this.ticksSpentInteracting = 0;
     }
 
     @Override
     protected final boolean checkExtraStartConditions(ServerLevel level, Villager self) {
-        // TODO: remove
-        for (Player p : Bukkit.getOnlinePlayers())
-            MessageUtil.sendActionbar(p, "&aCooldown: %d - target? " + this.hasTarget(), this.cooldown);
+        // TODO: remove debugging action bar
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            MessageUtil.sendActionbar(p, "&a%s: %d - target? %s - reach? %s", this.getClass().getSimpleName(), this.cooldown,
+                    String.valueOf(this.hasTarget()), String.valueOf(this.isTargetReachable(self)));
+        }
+
         // Check if we are still in cooldown
         if (--this.cooldown > 0)
             return false;
 
         // Check if we should scan or wait
         if (!this.hasTarget() && this.cooldown < 0) {
-            this.cooldown = this.getScanIntervalTicks();
+            this.cooldown = this.scanCooldownTicks;
             return false;
         }
 
@@ -105,7 +145,7 @@ public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
             return false;
 
         // Check time limit
-        if (this.ticksSpentNavigating > this.getMaxNavigationTicks() || this.ticksSpentInteracting > this.getMaxInteractionTicks())
+        if (this.ticksSpentNavigating > this.maxNavigationTicks || this.ticksSpentInteracting > this.maxInteractionTicks)
             return false;
 
         // Check extra conditions
@@ -115,17 +155,74 @@ public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
         return this.checkExtraStartConditions(level, self);
     }
 
+    /**
+     * Implemented by subclasses to add custom conditions
+     */
     protected abstract boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime);
 
     @Override
     protected abstract void start(ServerLevel level, Villager self, long gameTime);
 
     @Override
-    protected abstract void tick(ServerLevel level, Villager self, long gameTime);
+    protected final void tick(ServerLevel level, Villager self, long gameTime) {
+        // Interact with the target if we can reach it
+        if (this.isTargetReachable(self)) {
+            // Increment interaction duration
+            this.ticksSpentInteracting++;
+
+            // Check if we are ready for another interaction
+            if (--this.interactionIntervalTicksLeft <= 0) {
+                this.interactWithTarget(level, self, gameTime);
+                // Reset cooldown
+                this.interactionIntervalTicksLeft = this.maxInteractionIntervalTicks;
+            }
+            return;
+        }
+
+        // We are still far away from the target
+        this.ticksSpentNavigating++;
+
+        // Check if we are ready for another navigation call
+        if (--this.navigationIntervalTicksLeft <= 0) {
+            this.navigateToTarget(level, self, gameTime);
+            // Reset cooldown
+            this.navigationIntervalTicksLeft = this.maxNavigationIntervalTicks;
+        }
+    }
+
+    /**
+     * Extra logic that can be handled per tick
+     * - called by tick() regardless of the returns of isTargetReachable()
+     */
+    protected abstract void tickExtra(ServerLevel level, Villager self, long gameTime);
+
+    /**
+     * Navigates to the target
+     * - only called by tick() when isTargetReachable() returns false
+     * - implemented by subclasses
+     */
+    protected abstract void navigateToTarget(ServerLevel level, Villager self, long gameTime);
+
+    /**
+     * Interacts with the target
+     * - only called by tick() when isTargetReachable() returns true
+     * - implemented by subclasses
+     */
+    protected abstract void interactWithTarget(ServerLevel level, Villager self, long gameTime);
 
     @Override
     protected abstract void stop(ServerLevel level, Villager self, long gameTime);
 
+    /**
+     * Determines whether this behavior has a valid target or not
+     * - implemented by subclasses
+     */
     protected abstract boolean hasTarget();
+
+    /**
+     * Determines whether the target is within interaction range
+     * - implemented by subclasses
+     */
+    protected abstract boolean isTargetReachable(Villager self);
 
 }
