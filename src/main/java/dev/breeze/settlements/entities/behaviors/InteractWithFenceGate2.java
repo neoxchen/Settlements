@@ -130,7 +130,7 @@ public class InteractWithFenceGate2 extends OneShot<Villager> {
         return event.isCancelled();
     }
 
-    private static void highlight(ServerLevel level, BlockPos pos, Particle particle) {
+    public static void highlight(ServerLevel level, BlockPos pos, Particle particle) {
         Location location = new Location(level.getWorld(), pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         ParticleUtil.globalParticle(location, particle, 1, 0, 0, 0, 0);
     }

@@ -9,6 +9,7 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -21,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.EnumSet;
 import java.util.stream.Stream;
 
 @Getter
@@ -92,6 +94,48 @@ public class VillagerNavigation extends GroundPathNavigation {
 
             return isValid;
         }
+
+        //        @Override
+        public BlockPathTypes xxxgetBlockPathType(BlockGetter world, int x, int y, int z, Mob mob, int sizeX, int sizeY, int sizeZ, boolean canOpenDoors,
+                                                  boolean canEnterOpenDoors) {
+            EnumSet<BlockPathTypes> enumSet = EnumSet.noneOf(BlockPathTypes.class);
+            BlockPathTypes blockPathTypes = BlockPathTypes.BLOCKED;
+            BlockPos blockPos = mob.blockPosition();
+            blockPathTypes = this.getBlockPathTypes(world, x, y, z, sizeX, sizeY, sizeZ, canOpenDoors, canEnterOpenDoors, enumSet, blockPathTypes, blockPos);
+
+            if (enumSet.contains(BlockPathTypes.FENCE)) {
+                // Added fence gate identification
+                return isFenceGate(world.getBlockState(new BlockPos(x, y, z))) ? BlockPathTypes.OPEN : BlockPathTypes.FENCE;
+            } else if (enumSet.contains(BlockPathTypes.UNPASSABLE_RAIL)) {
+                return BlockPathTypes.UNPASSABLE_RAIL;
+            } else {
+                BlockPathTypes blockPathTypes2 = BlockPathTypes.BLOCKED;
+
+                for (BlockPathTypes blockPathTypes3 : enumSet) {
+                    if (mob.getPathfindingMalus(blockPathTypes3) < 0.0F) {
+                        return blockPathTypes3;
+                    }
+
+                    if (mob.getPathfindingMalus(blockPathTypes3) >= mob.getPathfindingMalus(blockPathTypes2)) {
+                        blockPathTypes2 = blockPathTypes3;
+                    }
+                }
+
+                return blockPathTypes == BlockPathTypes.OPEN && mob.getPathfindingMalus(blockPathTypes2) == 0.0F && sizeX <= 1 ? BlockPathTypes.OPEN :
+                        blockPathTypes2;
+            }
+        }
+
+//        @Override
+//        protected BlockPathTypes evaluateBlockPathType(BlockGetter world, boolean canOpenDoors, boolean canEnterOpenDoors, BlockPos pos, BlockPathTypes
+//        type) {
+//            if (type == BlockPathTypes.FENCE && isFenceGate(world.getBlockState(pos))) {
+//                MessageUtil.broadcast(world.getBlockState(pos).toString());
+//                InteractWithFenceGate2.highlight(this.mob.level.getMinecraftWorld(), pos, Particle.VILLAGER_ANGRY);
+//                return BlockPathTypes.OPEN;
+//            }
+//            return super.evaluateBlockPathType(world, canOpenDoors, canEnterOpenDoors, pos, type);
+//        }
 
         /**
          * Mostly copied over from the parent class
@@ -176,7 +220,7 @@ public class VillagerNavigation extends GroundPathNavigation {
                 }
 
                 // >> Custom code begin -- recognize fence gate as "walkable"
-                if (blockPathTypes == BlockPathTypes.FENCE && isFenceGate(this.level.getBlockState(new BlockPos(x, y, z)))) {
+                if (node == null && blockPathTypes == BlockPathTypes.FENCE && isFenceGate(this.level.getBlockState(new BlockPos(x, y, z)))) {
                     node = this.getNode(x, y, z);
                     node.type = BlockPathTypes.FENCE;
                     node.costMalus = FENCE_GATE_COST_MALUS;
