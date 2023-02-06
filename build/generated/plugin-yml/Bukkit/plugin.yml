@@ -1,0 +1,24 @@
+name: Settlements
+version: 1.0.0-SNAPSHOT
+main: dev.breeze.settlements.Main
+description: Enhanced villager mechanics
+load: STARTUP
+authors:
+ - Breeze
+prefix: Settlements
+commands:
+  test:
+    description: Main command for testing interface
+    aliases:
+     - _test
+    permission: Settlements.admin
+    usage: Just run the command!
+    permission-message: Permission denied
+permissions:
+  Settlements.admin:
+    description: Grants all permissions in this plugin
+    default: op
+  Settlements.placeholder:
+    description: "Placeholder permission, not actually used in operation"
+    default: op
+api-version: 1.19

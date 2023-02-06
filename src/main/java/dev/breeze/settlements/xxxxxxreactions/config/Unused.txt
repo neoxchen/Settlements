@@ -1,0 +1,39 @@
+    public static void burgeon(Item dendroCore, double burgeonDamage) {
+        World world = Objects.requireNonNull(dendroCore.getLocation().getWorld());
+
+        // Spawn burgeon seed
+        FallingBlock melon = world.spawnFallingBlock(dendroCore.getLocation().add(0, 0.2, 0), Material.MELON.createBlockData());
+        melon.setDropItem(false);
+        melon.setGlowing(true);
+        melon.setInvulnerable(true);
+        melon.setGravity(false);
+        melon.setVelocity(new Vector(0, 0.2, 0));
+
+        // Display reaction
+        new TextDisplay("&cBurgeon", 20, dendroCore.getLocation().add(0, 2, 0));
+
+        Bukkit.getScheduler().scheduleSyncDelayedTask(Main.plugin, () -> {
+            melon.remove();
+
+            // Deal damage to nearby entities
+            for (Entity nearby : world.getNearbyEntities(melon.getLocation(), ReactionConfig.BURGEON_AOE_RADIUS_HORIZONTAL,
+                    ReactionConfig.BURGEON_AOE_RADIUS_VERTICAL, ReactionConfig.BURGEON_AOE_RADIUS_HORIZONTAL)) {
+                // Does not deal self damage
+                if (!(nearby instanceof LivingEntity) || nearby instanceof ArmorStand)
+                    continue;
+                // Apply damage
+                ((LivingEntity) nearby).damage(burgeonDamage);
+
+                // Display reaction
+                new TextDisplay(Element.DENDRO.colorize("%.1f", burgeonDamage), 20, nearby.getLocation().add(0, 2, 0));
+            }
+
+            // Display particle
+            ParticleUtil.globalParticle(melon.getLocation(), Particle.SLIME, 150, 2, 1, 2, 1);
+            ParticleUtil.globalParticle(melon.getLocation(), Particle.EXPLOSION_LARGE, 5, 1, 0.5, 1, 1);
+
+            // Play sound
+            SoundUtil.playSoundPublic(melon.getLocation(), Sound.BLOCK_AZALEA_LEAVES_PLACE, 0.7f, 1.5f);
+            SoundUtil.playSoundPublic(dendroCore.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.05f, 2f);
+        }, 10);
+    }

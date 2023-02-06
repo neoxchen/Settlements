@@ -1,0 +1,8 @@
+EntityType<Entity> villager = builder.build("base_villager");
+
+// Create intrusive holder
+entityTypeRegistry.createIntrusiveHolder(villager);
+
+// Register custom entity
+ResourceKey<EntityType<?>> newKey = ResourceKey.create(Registries.ENTITY_TYPE, new ResourceLocation("settlements", "base_villager"));
+entityTypeRegistry.register(newKey, villager, Lifecycle.stable());

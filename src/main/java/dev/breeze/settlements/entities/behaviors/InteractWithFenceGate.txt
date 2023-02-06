@@ -1,0 +1,261 @@
+package dev.breeze.settlements.entities.behaviors;
+
+import com.google.common.collect.Sets;
+import com.mojang.datafixers.kinds.App;
+import com.mojang.datafixers.kinds.IdF;
+import com.mojang.datafixers.kinds.OptionalBox.Mu;
+import com.mojang.datafixers.util.Function3;
+import dev.breeze.settlements.utils.MessageUtil;
+import dev.breeze.settlements.utils.RandomUtil;
+import dev.breeze.settlements.utils.particle.ParticleUtil;
+import dev.breeze.settlements.utils.sound.SoundUtil;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.behavior.BehaviorControl;
+import net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder;
+import net.minecraft.world.entity.ai.behavior.declarative.MemoryAccessor;
+import net.minecraft.world.entity.ai.behavior.declarative.Trigger;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.pathfinder.Node;
+import net.minecraft.world.level.pathfinder.Path;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.lang3.mutable.MutableObject;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.craftbukkit.v1_19_R2.block.CraftBlock;
+import org.bukkit.event.entity.EntityInteractEvent;
+
+import javax.annotation.Nullable;
+import java.util.*;
+import java.util.function.Function;
+
+public class InteractWithFenceGate {
+
+    private static final int COOLDOWN_BEFORE_RERUNNING_IN_SAME_NODE = 20;
+    private static final double SKIP_CLOSING_GATE_IF_FURTHER_AWAY_THAN = 3.0D;
+    private static final double MAX_DISTANCE_TO_HOLD_GATE_OPEN_FOR_OTHER_MOBS = 2.0D;
+
+    public InteractWithFenceGate() {
+    }
+
+    public static BehaviorControl<LivingEntity> create() {
+        MutableObject<Node> mutableobject = new MutableObject(null);
+        MutableInt mutableint = new MutableInt(0);
+
+        return BehaviorBuilder.create(new Function<BehaviorBuilder.Instance<LivingEntity>, App<BehaviorBuilder.Mu<LivingEntity>, Trigger<LivingEntity>>>() {
+            @Override
+            public App<BehaviorBuilder.Mu<LivingEntity>, Trigger<LivingEntity>> apply(BehaviorBuilder.Instance<LivingEntity> builder) {
+                return builder.group(builder.present(MemoryModuleType.PATH), builder.registered(MemoryModuleType.DOORS_TO_CLOSE),
+                        builder.registered(MemoryModuleType.NEAREST_LIVING_ENTITIES)).apply(builder, new Function3<MemoryAccessor<IdF.Mu,
+                        Path>, MemoryAccessor<Mu, Set<GlobalPos>>, MemoryAccessor<Mu, List<LivingEntity>>, Trigger<LivingEntity>>() {
+                    @Override
+                    public Trigger<LivingEntity> apply(MemoryAccessor<IdF.Mu, Path> pathMemory, MemoryAccessor<Mu, Set<GlobalPos>> posMemory,
+                                                       MemoryAccessor<Mu, List<LivingEntity>> entityMemory) {
+                        return new Trigger<LivingEntity>() {
+                            @Override
+                            public boolean trigger(ServerLevel level, LivingEntity livingEntity, long gameTime) {
+                                Path path = builder.get(pathMemory);
+                                Optional<Set<GlobalPos>> optional = builder.tryGet(posMemory);
+
+                                if (path.notStarted() || path.isDone())
+                                    return false;
+
+                                // Check cooldown
+                                if (Objects.equals(mutableobject.getValue(), path.getNextNode())) {
+                                    mutableint.setValue(COOLDOWN_BEFORE_RERUNNING_IN_SAME_NODE);
+                                } else if (mutableint.decrementAndGet() > 0) {
+                                    return false;
+                                }
+
+                                MessageUtil.broadcast("triggered " + gameTime);
+                                mutableobject.setValue(path.getNextNode());
+                                Node previousNode = path.getPreviousNode();
+                                Node nextNode = path.getNextNode();
+                                BlockPos previousPos = previousNode.asBlockPos();
+                                BlockState previousState = level.getBlockState(previousPos);
+
+//                                for (int a = 0; a < path.getNodeCount(); a++) {
+//                                    Node node = path.getNode(a);
+//                                    highlight(level, node.asBlockPos(), Particle.END_ROD);
+//                                }
+
+                                if (previousState.is(BlockTags.FENCE_GATES, blockStateBase -> blockStateBase.getBlock() instanceof FenceGateBlock)) {
+                                    if (!isFenceGateOpen(previousState)) {
+                                        // CraftBukkit start - entities opening doors
+                                        EntityInteractEvent event = new EntityInteractEvent(livingEntity.getBukkitEntity(),
+                                                CraftBlock.at(livingEntity.level, previousPos));
+                                        livingEntity.level.getCraftServer().getPluginManager().callEvent(event);
+                                        if (event.isCancelled()) {
+                                            return false;
+                                        }
+                                        // CraftBukkit end
+                                        setFenceGateOpen(livingEntity, level, previousState, previousPos, true);
+                                    }
+
+                                    optional = rememberFenceGateToClose(posMemory, optional, level, previousPos);
+                                }
+
+                                BlockPos nextPos = nextNode.asBlockPos();
+                                BlockState nextState = level.getBlockState(nextPos);
+
+                                if (nextState.is(BlockTags.FENCE_GATES, (blockStateBase) -> blockStateBase.getBlock() instanceof FenceGateBlock)) {
+                                    if (!isFenceGateOpen(nextState)) {
+                                        // CraftBukkit start - entities opening doors
+                                        EntityInteractEvent event = new EntityInteractEvent(livingEntity.getBukkitEntity(),
+                                                CraftBlock.at(livingEntity.level,
+                                                        nextPos));
+                                        livingEntity.level.getCraftServer().getPluginManager().callEvent(event);
+                                        if (event.isCancelled()) {
+                                            return false;
+                                        }
+                                        // CraftBukkit end
+                                        setFenceGateOpen(livingEntity, level, nextState, nextPos, true);
+                                        optional = rememberFenceGateToClose(posMemory, optional, level, nextPos);
+                                    }
+                                }
+
+                                optional.ifPresent((set) -> closeRelevantFenceGates(level, livingEntity, previousNode, nextNode, set,
+                                        builder.tryGet(entityMemory)));
+                                return true;
+                            }
+                        };
+                    }
+                });
+            }
+        });
+    }
+
+    private static void highlight(ServerLevel level, BlockPos pos, Particle particle) {
+        Location location = new Location(level.getWorld(), pos.getX(), pos.getY() + 1, pos.getZ());
+        ParticleUtil.globalParticle(location, particle, 1, 0, 0, 0, 0);
+    }
+
+
+    public static void closeRelevantFenceGates(ServerLevel level, LivingEntity entity, @Nullable Node lastNode, @Nullable Node currentNode,
+                                               Set<GlobalPos> fenceGatePositions, Optional<List<LivingEntity>> otherMobs) {
+        Iterator<GlobalPos> iterator = fenceGatePositions.iterator();
+
+        while (iterator.hasNext()) {
+            GlobalPos globalpos = iterator.next();
+            BlockPos blockPosition = globalpos.pos();
+
+            if ((lastNode == null || !lastNode.asBlockPos().equals(blockPosition)) && (currentNode == null || !currentNode.asBlockPos().equals(blockPosition))) {
+                if (isFenceGateTooFarAway(level, entity, globalpos)) {
+                    iterator.remove();
+                    continue;
+                }
+
+                BlockState blockState = level.getBlockState(blockPosition);
+                if (!blockState.is(BlockTags.FENCE_GATES, blockStateBase -> blockStateBase.getBlock() instanceof FenceGateBlock)) {
+                    iterator.remove();
+                } else {
+                    if (!isFenceGateOpen(blockState)) {
+                        iterator.remove();
+                    } else if (areOtherMobsComingThroughFenceGate(entity, blockPosition, otherMobs)) {
+                        iterator.remove();
+                    } else {
+                        setFenceGateOpen(entity, level, blockState, blockPosition, false);
+                        iterator.remove();
+                    }
+                }
+            }
+        }
+
+    }
+
+    private static boolean areOtherMobsComingThroughFenceGate(LivingEntity entity, BlockPos pos, Optional<List<LivingEntity>> otherMobs) {
+        if (otherMobs.isEmpty())
+            return false;
+
+        List<LivingEntity> otherMobsList = otherMobs.get();
+        for (LivingEntity otherMob : otherMobsList) {
+            // Ignore all non-villager mobs coming through gates
+            if (otherMob.getType() != EntityType.VILLAGER)
+                continue;
+
+            // Ignore all mobs far away from the gates
+            if (!pos.closerToCenterThan(otherMob.position(), MAX_DISTANCE_TO_HOLD_GATE_OPEN_FOR_OTHER_MOBS))
+                continue;
+
+            // Check if any mob is coming through the gates
+            // - short circuit if there is any
+            if (isMobComingThroughFenceGate(otherMob.getBrain(), pos))
+                return true;
+        }
+        return false;
+    }
+
+    private static boolean isMobComingThroughFenceGate(Brain<?> brain, BlockPos pos) {
+        // If mob is not path finding, ignore
+        if (!brain.hasMemoryValue(MemoryModuleType.PATH))
+            return false;
+
+        Path pathEntity = brain.getMemory(MemoryModuleType.PATH).get();
+
+        // If mob's pathing is done, ignore
+        if (pathEntity.isDone())
+            return false;
+
+        // Try to get path node
+        Node previousNode = pathEntity.getPreviousNode();
+        if (previousNode == null)
+            return false;
+
+        Node nextNode = pathEntity.getNextNode();
+        return pos.equals(previousNode.asBlockPos()) || pos.equals(nextNode.asBlockPos());
+    }
+
+    private static boolean isFenceGateTooFarAway(ServerLevel world, LivingEntity entity, GlobalPos gatePosition) {
+        return gatePosition.dimension() != world.dimension() || !gatePosition.pos().closerToCenterThan(entity.position(),
+                SKIP_CLOSING_GATE_IF_FURTHER_AWAY_THAN);
+    }
+
+    private static Optional<Set<GlobalPos>> rememberFenceGateToClose(MemoryAccessor<Mu, Set<GlobalPos>> queryResult, Optional<Set<GlobalPos>> gates,
+                                                                     ServerLevel world, BlockPos pos) {
+        // TODO: ???
+        GlobalPos globalpos = GlobalPos.of(world.dimension(), pos);
+
+        return Optional.of(gates.map((set) -> {
+            set.add(globalpos);
+            return set;
+        }).orElseGet(() -> {
+            Set<GlobalPos> set = Sets.newHashSet(globalpos);
+            queryResult.set(set);
+            return set;
+        }));
+    }
+
+    private static boolean isFenceGateOpen(BlockState blockState) {
+        return blockState.getValue(FenceGateBlock.OPEN);
+    }
+
+    private static void setFenceGateOpen(@Nullable Entity entity, Level level, BlockState state, BlockPos pos, boolean toOpen) {
+        // Ignore if fence gate is already opened/closed
+        if (isFenceGateOpen(state) == toOpen)
+            return;
+
+        // Change state
+        level.setBlock(pos, state.setValue(FenceGateBlock.OPEN, toOpen), 10);
+
+        // Play sound
+        Location location = new Location(level.getWorld(), pos.getX(), pos.getY(), pos.getZ());
+        Sound sound = toOpen ? Sound.BLOCK_FENCE_GATE_OPEN : Sound.BLOCK_FENCE_GATE_CLOSE;
+        SoundUtil.playSoundPublic(location, sound, 1F, RandomUtil.RANDOM.nextFloat() * 0.1F + 0.9F);
+
+        // Fire event
+        level.gameEvent(entity, toOpen ? GameEvent.BLOCK_OPEN : GameEvent.BLOCK_CLOSE, pos);
+    }
+
+
+}
