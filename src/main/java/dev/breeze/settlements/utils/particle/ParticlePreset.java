@@ -2,9 +2,9 @@ package dev.breeze.settlements.utils.particle;
 
 import dev.breeze.settlements.Main;
 import dev.breeze.settlements.utils.LocationUtil;
+import dev.breeze.settlements.utils.SafeRunnable;
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,7 +17,8 @@ public class ParticlePreset {
         ParticleUtil.globalParticle(line, particle, count, dx, dy, dz, speed);
     }
 
-    public static void displayCircle(Location center, double radius, int sampleCount, Particle particle, int count, double dx, double dy, double dz, double speed) {
+    public static void displayCircle(Location center, double radius, int sampleCount, Particle particle, int count, double dx, double dy, double dz,
+                                     double speed) {
         List<Location> circle = LocationUtil.getCircle(center, radius, sampleCount);
         ParticleUtil.globalParticle(circle, particle, count, dx, dy, dz, speed);
     }
@@ -42,12 +43,12 @@ public class ParticlePreset {
         int rotationDelay = (int) (1 / rotationSpeed);
         int rotationDelta = rotationSpeed > 0 ? 1 : -1;
 
-        new BukkitRunnable() {
+        new SafeRunnable() {
             int duration = 0;
             int offset = 0;
 
             @Override
-            public void run() {
+            public void safeRun() {
                 if (duration > durationTicks) {
                     this.cancel();
                     return;
@@ -86,13 +87,13 @@ public class ParticlePreset {
         int rotationDelay = (int) (1 / rotationSpeed);
         int rotationDelta = rotationSpeed > 0 ? 1 : -1;
 
-        new BukkitRunnable() {
+        new SafeRunnable() {
             int duration = 0;
             int offset = 0;
             Location[] keyPoints = new Location[10];
 
             @Override
-            public void run() {
+            public void safeRun() {
                 if (duration > durationTicks) {
                     this.cancel();
                     return;

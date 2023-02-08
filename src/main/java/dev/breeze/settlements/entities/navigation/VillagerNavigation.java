@@ -9,7 +9,6 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -22,7 +21,6 @@ import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.EnumSet;
 import java.util.stream.Stream;
 
 @Getter
@@ -61,27 +59,30 @@ public class VillagerNavigation extends GroundPathNavigation {
         }
 
         @Override
-        protected boolean isNeighborValid(@Nullable Node node, Node successor) {
+        protected boolean isNeighborValid(@Nullable Node neighbor, @Nonnull Node origin) {
             // Get super's answer first
-            boolean isValid = super.isNeighborValid(node, successor);
+            boolean isValid = super.isNeighborValid(neighbor, origin);
 
             // Check if node is null or closed (previously visited)
-            if (node == null || node.closed)
+            if (neighbor == null || neighbor.closed)
                 return false;
 
-            BlockPathTypes blockPathTypes = this.getCachedBlockType(this.mob, node.x, node.y, node.z);
+            BlockPathTypes blockPathTypes = this.getCachedBlockType(this.mob, origin.x, origin.y, origin.z);
             if (blockPathTypes != BlockPathTypes.FENCE)
                 return isValid;
 
             // If the block is fence gate, return true
             // - cause custom villagers can open fence gates
-            BlockPos blockPos = new BlockPos(node.x, node.y, node.z);
+            BlockPos blockPos = new BlockPos(origin.x, origin.y, origin.z);
             if (isFenceGate(this.level.getBlockState(blockPos)))
-                return !node.closed;
+                return !neighbor.closed;
 
             return isValid;
         }
 
+        /**
+         * Objective of addition to this method is to prevent villagers from using diagonal pathing when crossing fence gates
+         */
         @Override
         protected boolean isDiagonalValid(Node xNode, Node zNode, Node xDiagNode, Node zDiagNode) {
             // Get super's answer first
@@ -95,48 +96,6 @@ public class VillagerNavigation extends GroundPathNavigation {
             return isValid;
         }
 
-        //        @Override
-        public BlockPathTypes xxxgetBlockPathType(BlockGetter world, int x, int y, int z, Mob mob, int sizeX, int sizeY, int sizeZ, boolean canOpenDoors,
-                                                  boolean canEnterOpenDoors) {
-            EnumSet<BlockPathTypes> enumSet = EnumSet.noneOf(BlockPathTypes.class);
-            BlockPathTypes blockPathTypes = BlockPathTypes.BLOCKED;
-            BlockPos blockPos = mob.blockPosition();
-            blockPathTypes = this.getBlockPathTypes(world, x, y, z, sizeX, sizeY, sizeZ, canOpenDoors, canEnterOpenDoors, enumSet, blockPathTypes, blockPos);
-
-            if (enumSet.contains(BlockPathTypes.FENCE)) {
-                // Added fence gate identification
-                return isFenceGate(world.getBlockState(new BlockPos(x, y, z))) ? BlockPathTypes.OPEN : BlockPathTypes.FENCE;
-            } else if (enumSet.contains(BlockPathTypes.UNPASSABLE_RAIL)) {
-                return BlockPathTypes.UNPASSABLE_RAIL;
-            } else {
-                BlockPathTypes blockPathTypes2 = BlockPathTypes.BLOCKED;
-
-                for (BlockPathTypes blockPathTypes3 : enumSet) {
-                    if (mob.getPathfindingMalus(blockPathTypes3) < 0.0F) {
-                        return blockPathTypes3;
-                    }
-
-                    if (mob.getPathfindingMalus(blockPathTypes3) >= mob.getPathfindingMalus(blockPathTypes2)) {
-                        blockPathTypes2 = blockPathTypes3;
-                    }
-                }
-
-                return blockPathTypes == BlockPathTypes.OPEN && mob.getPathfindingMalus(blockPathTypes2) == 0.0F && sizeX <= 1 ? BlockPathTypes.OPEN :
-                        blockPathTypes2;
-            }
-        }
-
-//        @Override
-//        protected BlockPathTypes evaluateBlockPathType(BlockGetter world, boolean canOpenDoors, boolean canEnterOpenDoors, BlockPos pos, BlockPathTypes
-//        type) {
-//            if (type == BlockPathTypes.FENCE && isFenceGate(world.getBlockState(pos))) {
-//                MessageUtil.broadcast(world.getBlockState(pos).toString());
-//                InteractWithFenceGate2.highlight(this.mob.level.getMinecraftWorld(), pos, Particle.VILLAGER_ANGRY);
-//                return BlockPathTypes.OPEN;
-//            }
-//            return super.evaluateBlockPathType(world, canOpenDoors, canEnterOpenDoors, pos, type);
-//        }
-
         /**
          * Mostly copied over from the parent class
          * - with some minor refactoring
@@ -144,27 +103,38 @@ public class VillagerNavigation extends GroundPathNavigation {
          */
         @Override
         @Nullable
-        protected Node findAcceptedNode(int x, int y, int z, int maxYStep, double prevFeetY, Direction direction, BlockPathTypes nodeType) {
+        protected Node findAcceptedNode(int x, int y, int z, int maxYStep, double prevFeetY, Direction direction, BlockPathTypes prevNodeType) {
             Node node = null;
             BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
             double d = this.getFloorLevel(mutableBlockPos.set(x, y, z));
             if (d - prevFeetY > this.getMobJumpHeight()) {
                 return null;
             }
-            BlockPathTypes blockPathTypes = this.getCachedBlockType(this.mob, x, y, z);
-            float penalty = this.mob.getPathfindingMalus(blockPathTypes);
+            BlockPathTypes currNodeType = this.getCachedBlockType(this.mob, x, y, z);
+            float penalty = this.mob.getPathfindingMalus(currNodeType);
             double e = (double) this.mob.getBbWidth() / 2.0D;
             if (penalty >= 0.0F) {
-                node = this.getNodeAndUpdateCostToMax(x, y, z, blockPathTypes, penalty);
+                node = this.getNodeAndUpdateCostToMax(x, y, z, currNodeType, penalty);
             }
 
-            if (doesBlockHavePartialCollision(nodeType) && node != null && node.costMalus >= 0.0F && !this.canReachWithoutCollision(node)) {
+            if (doesBlockHavePartialCollision(prevNodeType) && node != null && node.costMalus >= 0.0F && !this.canReachWithoutCollision(node)) {
                 node = null;
             }
 
-            if (blockPathTypes != BlockPathTypes.WALKABLE && (!this.isAmphibious() || blockPathTypes != BlockPathTypes.WATER)) {
-                if ((node == null || node.costMalus < 0.0F) && maxYStep > 0 && (blockPathTypes != BlockPathTypes.FENCE || this.canWalkOverFences()) && blockPathTypes != BlockPathTypes.UNPASSABLE_RAIL && blockPathTypes != BlockPathTypes.TRAPDOOR && blockPathTypes != BlockPathTypes.POWDER_SNOW) {
-                    node = this.findAcceptedNode(x, y + 1, z, maxYStep - 1, prevFeetY, direction, nodeType);
+            // >> Custom code 1 begin -- recognize block opposite of fence gate
+            // - aka allows the villager to see blocks "over" fence gates
+            Direction opposite = direction.getOpposite();
+            if (node == null && prevNodeType == BlockPathTypes.FENCE
+                    && isFenceGate(this.level.getBlockState(new BlockPos(x + opposite.getStepX(), y, z + opposite.getStepZ())))) {
+                node = this.getNode(x, y, z);
+                node.type = currNodeType;
+                node.costMalus = currNodeType.getMalus();
+            }
+            // << Custom code 1 ends
+
+            if (currNodeType != BlockPathTypes.WALKABLE && (!this.isAmphibious() || currNodeType != BlockPathTypes.WATER)) {
+                if ((node == null || node.costMalus < 0.0F) && maxYStep > 0 && (currNodeType != BlockPathTypes.FENCE || this.canWalkOverFences()) && currNodeType != BlockPathTypes.UNPASSABLE_RAIL && currNodeType != BlockPathTypes.TRAPDOOR && currNodeType != BlockPathTypes.POWDER_SNOW) {
+                    node = this.findAcceptedNode(x, y + 1, z, maxYStep - 1, prevFeetY, direction, prevNodeType);
                     if (node != null && (node.type == BlockPathTypes.OPEN || node.type == BlockPathTypes.WALKABLE) && this.mob.getBbWidth() < 1.0F) {
                         double g = (double) (x - direction.getStepX()) + 0.5D;
                         double h = (double) (z - direction.getStepZ()) + 0.5D;
@@ -176,27 +146,27 @@ public class VillagerNavigation extends GroundPathNavigation {
                     }
                 }
 
-                if (!this.isAmphibious() && blockPathTypes == BlockPathTypes.WATER && !this.canFloat()) {
+                if (!this.isAmphibious() && currNodeType == BlockPathTypes.WATER && !this.canFloat()) {
                     if (this.getCachedBlockType(this.mob, x, y - 1, z) != BlockPathTypes.WATER) {
                         return node;
                     }
 
                     while (y > this.mob.level.getMinBuildHeight()) {
                         --y;
-                        blockPathTypes = this.getCachedBlockType(this.mob, x, y, z);
-                        if (blockPathTypes != BlockPathTypes.WATER) {
+                        currNodeType = this.getCachedBlockType(this.mob, x, y, z);
+                        if (currNodeType != BlockPathTypes.WATER) {
                             return node;
                         }
 
-                        node = this.getNodeAndUpdateCostToMax(x, y, z, blockPathTypes, this.mob.getPathfindingMalus(blockPathTypes));
+                        node = this.getNodeAndUpdateCostToMax(x, y, z, currNodeType, this.mob.getPathfindingMalus(currNodeType));
                     }
                 }
 
-                if (blockPathTypes == BlockPathTypes.OPEN) {
+                if (currNodeType == BlockPathTypes.OPEN) {
                     int i = 0;
                     int j = y;
 
-                    while (blockPathTypes == BlockPathTypes.OPEN) {
+                    while (currNodeType == BlockPathTypes.OPEN) {
                         --y;
                         if (y < this.mob.level.getMinBuildHeight()) {
                             return this.getBlockedNode(x, j, z);
@@ -206,10 +176,10 @@ public class VillagerNavigation extends GroundPathNavigation {
                             return this.getBlockedNode(x, y, z);
                         }
 
-                        blockPathTypes = this.getCachedBlockType(this.mob, x, y, z);
-                        penalty = this.mob.getPathfindingMalus(blockPathTypes);
-                        if (blockPathTypes != BlockPathTypes.OPEN && penalty >= 0.0F) {
-                            node = this.getNodeAndUpdateCostToMax(x, y, z, blockPathTypes, penalty);
+                        currNodeType = this.getCachedBlockType(this.mob, x, y, z);
+                        penalty = this.mob.getPathfindingMalus(currNodeType);
+                        if (currNodeType != BlockPathTypes.OPEN && penalty >= 0.0F) {
+                            node = this.getNodeAndUpdateCostToMax(x, y, z, currNodeType, penalty);
                             break;
                         }
 
@@ -219,19 +189,20 @@ public class VillagerNavigation extends GroundPathNavigation {
                     }
                 }
 
-                // >> Custom code begin -- recognize fence gate as "walkable"
-                if (node == null && blockPathTypes == BlockPathTypes.FENCE && isFenceGate(this.level.getBlockState(new BlockPos(x, y, z)))) {
+                // >> Custom code 2 begin -- recognize fence gate as "walkable into"
+                // - aka allows the villager to pathfind through fence gate blocks
+                if (node == null && currNodeType == BlockPathTypes.FENCE && isFenceGate(this.level.getBlockState(new BlockPos(x, y, z)))) {
                     node = this.getNode(x, y, z);
                     node.type = BlockPathTypes.FENCE;
                     node.costMalus = FENCE_GATE_COST_MALUS;
                 }
-                // << Custom code ends
+                // << Custom code 2 ends
 
-                if (doesBlockHavePartialCollision(blockPathTypes) && node == null) {
+                if (doesBlockHavePartialCollision(currNodeType) && node == null) {
                     node = this.getNode(x, y, z);
                     node.closed = true;
-                    node.type = blockPathTypes;
-                    node.costMalus = blockPathTypes.getMalus();
+                    node.type = currNodeType;
+                    node.costMalus = currNodeType.getMalus();
                 }
 
             }

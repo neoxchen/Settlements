@@ -102,6 +102,7 @@ public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
         // Dynamic variables
         // Initial cooldown = max cooldown to prevent spamming
         this.cooldown = this.interactCooldownTicks;
+        this.cooldown = 80;
 
         this.navigationIntervalTicksLeft = 0;
         this.ticksSpentNavigating = 0;
@@ -176,18 +177,20 @@ public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
                 // Reset cooldown
                 this.interactionIntervalTicksLeft = this.maxInteractionIntervalTicks;
             }
-            return;
+        } else {
+            // We are still far away from the target
+            this.ticksSpentNavigating++;
+
+            // Check if we are ready for another navigation call
+            if (--this.navigationIntervalTicksLeft <= 0) {
+                this.navigateToTarget(level, self, gameTime);
+                // Reset cooldown
+                this.navigationIntervalTicksLeft = this.maxNavigationIntervalTicks;
+            }
         }
 
-        // We are still far away from the target
-        this.ticksSpentNavigating++;
-
-        // Check if we are ready for another navigation call
-        if (--this.navigationIntervalTicksLeft <= 0) {
-            this.navigateToTarget(level, self, gameTime);
-            // Reset cooldown
-            this.navigationIntervalTicksLeft = this.maxNavigationIntervalTicks;
-        }
+        // Execute extra logic
+        this.tickExtra(level, self, gameTime);
     }
 
     /**

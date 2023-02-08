@@ -74,10 +74,10 @@ public class InteractWithFenceGate2 extends OneShot<Villager> {
 
         boolean triggered = false;
 
-        for (int a = 0; a < path.getNodeCount(); a++) {
-            Node xx = path.getNode(a);
-            highlight(villager.level.getMinecraftWorld(), new BlockPos(xx.x, xx.y, xx.z), Particle.END_ROD);
-        }
+//        for (int a = 0; a < path.getNodeCount(); a++) {
+//            Node xx = path.getNode(a);
+//            highlight(villager.level.getMinecraftWorld(), new BlockPos(xx.x, xx.y, xx.z), Particle.END_ROD);
+//        }
 
         // Check if the previous and next nodes are fence gates
         List<Node> toCheck = new ArrayList<>(Arrays.asList(path.getPreviousNode(), path.getNextNode()));
@@ -90,8 +90,6 @@ public class InteractWithFenceGate2 extends OneShot<Villager> {
         for (Node node : toCheck) {
             if (node == null)
                 continue;
-
-            highlight(villager.level.getMinecraftWorld(), new BlockPos(node.x, node.y, node.z), Particle.HEART);
 
             BlockPos pos = node.asBlockPos();
             BlockState state = level.getBlockState(pos);
@@ -130,10 +128,10 @@ public class InteractWithFenceGate2 extends OneShot<Villager> {
         return event.isCancelled();
     }
 
-    public static void highlight(ServerLevel level, BlockPos pos, Particle particle) {
-        Location location = new Location(level.getWorld(), pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        ParticleUtil.globalParticle(location, particle, 1, 0, 0, 0, 0);
-    }
+//    public static void highlight(ServerLevel level, BlockPos pos, Particle particle) {
+//        Location location = new Location(level.getWorld(), pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+//        ParticleUtil.globalParticle(location, particle, 1, 0, 0, 0, 0);
+//    }
 
     private static void rememberFenceGateToClose(ServerLevel level, Villager villager, BlockPos toClose) {
         GlobalPos globalpos = GlobalPos.of(level.dimension(), toClose);

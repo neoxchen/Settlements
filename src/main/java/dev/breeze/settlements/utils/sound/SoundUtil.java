@@ -1,10 +1,10 @@
 package dev.breeze.settlements.utils.sound;
 
 import dev.breeze.settlements.Main;
+import dev.breeze.settlements.utils.SafeRunnable;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 
 public class SoundUtil {
@@ -26,10 +26,11 @@ public class SoundUtil {
     }
 
     public static void playNotes(float[] notes, Sound sound, Player p, int interval) {
-        new BukkitRunnable() {
+        new SafeRunnable() {
             int count = 0;
 
-            public void run() {
+            @Override
+            public void safeRun() {
                 if (count >= notes.length) {
                     this.cancel();
                     return;
@@ -43,10 +44,11 @@ public class SoundUtil {
     }
 
     public static void playNotesPublic(float[] notes, Sound sound, Location loc, int interval) {
-        new BukkitRunnable() {
+        new SafeRunnable() {
             int count = 0;
 
-            public void run() {
+            @Override
+            public void safeRun() {
                 if (count >= notes.length) {
                     this.cancel();
                     return;

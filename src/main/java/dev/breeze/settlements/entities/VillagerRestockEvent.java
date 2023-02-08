@@ -2,6 +2,7 @@ package dev.breeze.settlements.entities;
 
 import dev.breeze.settlements.Main;
 import dev.breeze.settlements.utils.LocationUtil;
+import dev.breeze.settlements.utils.SafeRunnable;
 import dev.breeze.settlements.utils.particle.ParticleUtil;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -9,7 +10,6 @@ import org.bukkit.entity.AbstractVillager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.VillagerReplenishTradeEvent;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -38,11 +38,11 @@ public final class VillagerRestockEvent implements Listener {
         final double dy = 0.03;
         final int particlesPerTick = 3;
 
-        new BukkitRunnable() {
+        new SafeRunnable() {
             int elapsed = 0;
 
             @Override
-            public void run() {
+            public void safeRun() {
                 if (elapsed > 20) {
                     this.cancel();
                     return;
