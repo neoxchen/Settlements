@@ -3,7 +3,7 @@ package dev.breeze.settlements.entities.villagers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
-import dev.breeze.settlements.entities.behaviors.InteractWithFenceGate2;
+import dev.breeze.settlements.entities.behaviors.InteractWithFenceGate;
 import dev.breeze.settlements.entities.behaviors.RepairIronGolemBehavior;
 import dev.breeze.settlements.entities.behaviors.ShearSheepBehavior;
 import dev.breeze.settlements.entities.goals.item_toss.TossItemGoal;
@@ -138,7 +138,7 @@ public class BaseVillager extends Villager {
 
             ImmutableList<MemoryModuleType<?>> customMemoryTypes = new ImmutableList.Builder<MemoryModuleType<?>>()
                     .addAll(DEFAULT_MEMORY_TYPES)
-                    .add(InteractWithFenceGate2.MEMORY_FENCE_GATE_TO_CLOSE)
+                    .add(InteractWithFenceGate.MEMORY_FENCE_GATE_TO_CLOSE)
                     .build();
 
             return Brain.provider(customMemoryTypes, DEFAULT_SENSOR_TYPES);
@@ -201,7 +201,7 @@ public class BaseVillager extends Villager {
 
     public List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> getExtraCoreBehaviors() {
         return List.of(
-                Pair.of(0, new InteractWithFenceGate2())
+                Pair.of(0, new InteractWithFenceGate())
         );
     }
 

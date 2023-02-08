@@ -1,7 +1,7 @@
 package dev.breeze.settlements.entities;
 
 import com.mojang.serialization.Codec;
-import dev.breeze.settlements.entities.behaviors.InteractWithFenceGate2;
+import dev.breeze.settlements.entities.behaviors.InteractWithFenceGate;
 import dev.breeze.settlements.entities.goals.item_toss.VillagerTossItemEvent;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.utils.BaseModuleController;
@@ -30,7 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static dev.breeze.settlements.entities.behaviors.InteractWithFenceGate2.REGISTRY_KEY_FENCE_GATE_TO_CLOSE;
+import static dev.breeze.settlements.entities.behaviors.InteractWithFenceGate.REGISTRY_KEY_FENCE_GATE_TO_CLOSE;
 
 public class EntityModuleController extends BaseModuleController {
 
@@ -129,7 +129,7 @@ public class EntityModuleController extends BaseModuleController {
         register.setAccessible(true);
 
         // Build & register memories
-        InteractWithFenceGate2.MEMORY_FENCE_GATE_TO_CLOSE = registerMemory(REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
+        InteractWithFenceGate.MEMORY_FENCE_GATE_TO_CLOSE = registerMemory(REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
 
         // Re-freeze registry
         LogUtil.info("Re-freezing memory module type registry...");

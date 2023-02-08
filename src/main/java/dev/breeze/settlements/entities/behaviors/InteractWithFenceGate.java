@@ -2,7 +2,6 @@ package dev.breeze.settlements.entities.behaviors;
 
 import com.google.common.collect.Sets;
 import dev.breeze.settlements.utils.RandomUtil;
-import dev.breeze.settlements.utils.particle.ParticleUtil;
 import dev.breeze.settlements.utils.sound.SoundUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -22,7 +21,6 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.pathfinder.Node;
 import net.minecraft.world.level.pathfinder.Path;
 import org.bukkit.Location;
-import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.craftbukkit.v1_19_R2.block.CraftBlock;
 import org.bukkit.event.entity.EntityInteractEvent;
@@ -31,7 +29,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-public class InteractWithFenceGate2 extends OneShot<Villager> {
+public class InteractWithFenceGate extends OneShot<Villager> {
 
     public static final String REGISTRY_KEY_FENCE_GATE_TO_CLOSE = "fence_gates_to_close";
     public static MemoryModuleType<Set<GlobalPos>> MEMORY_FENCE_GATE_TO_CLOSE;
@@ -43,7 +41,7 @@ public class InteractWithFenceGate2 extends OneShot<Villager> {
     private Node currentNode;
     private int cooldown;
 
-    public InteractWithFenceGate2() {
+    public InteractWithFenceGate() {
         this.currentNode = null;
         this.cooldown = 0;
     }
