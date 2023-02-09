@@ -1,4 +1,4 @@
-package dev.breeze.settlements.entities.behaviors;
+package dev.breeze.settlements.entities.villagers.behaviors;
 
 import com.google.common.collect.Sets;
 import dev.breeze.settlements.utils.RandomUtil;

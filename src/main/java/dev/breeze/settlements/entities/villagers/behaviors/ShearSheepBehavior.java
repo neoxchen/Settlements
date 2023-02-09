@@ -1,4 +1,4 @@
-package dev.breeze.settlements.entities.behaviors;
+package dev.breeze.settlements.entities.villagers.behaviors;
 
 import dev.breeze.settlements.utils.TimeUtil;
 import dev.breeze.settlements.utils.itemstack.ItemStackBuilder;
@@ -53,7 +53,7 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
                         // There should be living entities nearby
                         MemoryModuleType.NEAREST_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
                 ), TimeUtil.seconds(20), Math.pow(30, 2),
-                20 * 20, Math.pow(2, 2),
+                TimeUtil.minutes(2), Math.pow(2, 2),
                 5, 1,
                 TimeUtil.seconds(20), 1);
 

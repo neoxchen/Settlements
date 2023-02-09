@@ -3,11 +3,11 @@ package dev.breeze.settlements.entities.villagers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
-import dev.breeze.settlements.entities.behaviors.InteractWithFenceGate;
-import dev.breeze.settlements.entities.behaviors.RepairIronGolemBehavior;
-import dev.breeze.settlements.entities.behaviors.ShearSheepBehavior;
-import dev.breeze.settlements.entities.goals.item_toss.TossItemGoal;
-import dev.breeze.settlements.entities.navigation.VillagerNavigation;
+import dev.breeze.settlements.entities.villagers.behaviors.InteractWithFenceGate;
+import dev.breeze.settlements.entities.villagers.behaviors.RepairIronGolemBehavior;
+import dev.breeze.settlements.entities.villagers.behaviors.ShearSheepBehavior;
+import dev.breeze.settlements.entities.villagers.goals.item_toss.TossItemGoal;
+import dev.breeze.settlements.entities.villagers.navigation.VillagerNavigation;
 import dev.breeze.settlements.utils.LogUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -192,6 +192,7 @@ public class BaseVillager extends Villager {
         brain.addActivity(Activity.PRE_RAID, VillagerGoalPackages.getPreRaidPackage(profession, 0.5F));
         brain.addActivity(Activity.RAID, VillagerGoalPackages.getRaidPackage(profession, 0.5F));
         brain.addActivity(Activity.HIDE, VillagerGoalPackages.getHidePackage(profession, 0.5F));
+
         brain.setCoreActivities(ImmutableSet.of(Activity.CORE));
         brain.setDefaultActivity(Activity.IDLE);
         brain.setActiveActivityIfPossible(Activity.IDLE);

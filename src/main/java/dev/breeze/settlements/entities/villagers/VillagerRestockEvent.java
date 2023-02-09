@@ -1,4 +1,4 @@
-package dev.breeze.settlements.entities;
+package dev.breeze.settlements.entities.villagers;
 
 import dev.breeze.settlements.Main;
 import dev.breeze.settlements.utils.LocationUtil;

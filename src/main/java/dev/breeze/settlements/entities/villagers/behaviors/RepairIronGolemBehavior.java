@@ -1,4 +1,4 @@
-package dev.breeze.settlements.entities.behaviors;
+package dev.breeze.settlements.entities.villagers.behaviors;
 
 import dev.breeze.settlements.utils.TimeUtil;
 import dev.breeze.settlements.utils.itemstack.ItemStackBuilder;

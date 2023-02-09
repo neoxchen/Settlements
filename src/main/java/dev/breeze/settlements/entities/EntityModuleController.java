@@ -1,9 +1,10 @@
 package dev.breeze.settlements.entities;
 
 import com.mojang.serialization.Codec;
-import dev.breeze.settlements.entities.behaviors.InteractWithFenceGate;
-import dev.breeze.settlements.entities.goals.item_toss.VillagerTossItemEvent;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
+import dev.breeze.settlements.entities.villagers.VillagerRestockEvent;
+import dev.breeze.settlements.entities.villagers.behaviors.InteractWithFenceGate;
+import dev.breeze.settlements.entities.wolves.VillagerWolf;
 import dev.breeze.settlements.utils.BaseModuleController;
 import dev.breeze.settlements.utils.LogUtil;
 import net.minecraft.core.MappedRegistry;
@@ -30,7 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static dev.breeze.settlements.entities.behaviors.InteractWithFenceGate.REGISTRY_KEY_FENCE_GATE_TO_CLOSE;
+import static dev.breeze.settlements.entities.villagers.behaviors.InteractWithFenceGate.REGISTRY_KEY_FENCE_GATE_TO_CLOSE;
 
 public class EntityModuleController extends BaseModuleController {
 
@@ -39,7 +40,8 @@ public class EntityModuleController extends BaseModuleController {
         // Register all entities
         try {
             this.registerEntities(Map.of(
-                    BaseVillager.ENTITY_TYPE, BaseVillager.getEntityTypeBuilder()
+                    BaseVillager.ENTITY_TYPE, BaseVillager.getEntityTypeBuilder(),
+                    VillagerWolf.ENTITY_TYPE, VillagerWolf.getEntityTypeBuilder()
             ));
 
             this.registerMemories();
@@ -53,7 +55,7 @@ public class EntityModuleController extends BaseModuleController {
 
     @Override
     protected boolean load(JavaPlugin plugin, PluginManager pm) {
-        pm.registerEvents(new VillagerTossItemEvent(), plugin);
+//        pm.registerEvents(new VillagerTossItemEvent(), plugin);
         pm.registerEvents(new VillagerRestockEvent(), plugin);
         return true;
     }

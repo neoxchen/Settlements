@@ -1,4 +1,4 @@
-package dev.breeze.settlements.entities.goals.item_toss;
+package dev.breeze.settlements.entities.villagers.goals.item_toss;
 
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.utils.PersistentUtil;

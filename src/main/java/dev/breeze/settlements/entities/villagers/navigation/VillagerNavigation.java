@@ -1,4 +1,4 @@
-package dev.breeze.settlements.entities.navigation;
+package dev.breeze.settlements.entities.villagers.navigation;
 
 import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
