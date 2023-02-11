@@ -5,10 +5,10 @@ import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Dynamic;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
-import dev.breeze.settlements.entities.wolves.behaviors.SitBehaviorController;
 import dev.breeze.settlements.entities.wolves.behaviors.TestWolfBehavior;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfPlayWithEntityBehavior;
+import dev.breeze.settlements.entities.wolves.behaviors.WolfSitBehaviorController;
 import dev.breeze.settlements.entities.wolves.goals.WolfFollowOwnerGoal;
 import dev.breeze.settlements.entities.wolves.goals.WolfSitWhenOrderedToGoal;
 import dev.breeze.settlements.entities.wolves.sensors.WolfNearbyItemsSensor;
@@ -225,20 +225,20 @@ public class VillagerWolf extends Wolf {
                 .build());
         // TODO: Is the default wander/idle behavior enough?
         brain.addActivity(Activity.IDLE, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(5, SitBehaviorController.stand()))
+                .add(Pair.of(5, WolfSitBehaviorController.stand()))
 //                .add(Pair.of(1, new TestWolfBehavior("IDLE")))
                 .build());
         // TODO: Chase sheep behaviors?
         brain.addActivity(Activity.WORK, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(5, SitBehaviorController.stand()))
+                .add(Pair.of(5, WolfSitBehaviorController.stand()))
                 .add(Pair.of(1, new WolfFetchItemBehavior((itemEntity) -> true)))
                 .build());
         brain.addActivity(Activity.PLAY, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(5, SitBehaviorController.stand()))
+                .add(Pair.of(5, WolfSitBehaviorController.stand()))
                 .add(Pair.of(0, new WolfPlayWithEntityBehavior()))
                 .build());
         brain.addActivity(Activity.REST, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(3, SitBehaviorController.sit()))
+                .add(Pair.of(3, WolfSitBehaviorController.sit()))
                 .add(Pair.of(1, new TestWolfBehavior("REST")))
                 .build());
 
