@@ -80,6 +80,9 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
 
     @Override
     protected final boolean checkExtraStartConditions(@Nonnull ServerLevel level, @Nonnull Wolf self) {
+        if (--this.cooldown > 0)
+            return false;
+
         // Check if the wolf has owner
         BaseVillager owner = this.getOwner(self);
         if (owner == null)
