@@ -1,6 +1,7 @@
 package dev.breeze.settlements.test;
 
 import dev.breeze.settlements.entities.villagers.BaseVillager;
+import dev.breeze.settlements.entities.wolves.VillagerWolf;
 import dev.breeze.settlements.utils.MessageUtil;
 import net.minecraft.world.entity.npc.VillagerType;
 import org.bukkit.block.Block;
@@ -12,7 +13,6 @@ import org.bukkit.entity.Player;
 import javax.annotation.Nonnull;
 
 public class TestCommandHandler implements CommandExecutor {
-    private BaseVillager villager;
 
     @Override
     public boolean onCommand(@Nonnull CommandSender sender, @Nonnull Command command, @Nonnull String label, String[] args) {
@@ -32,8 +32,10 @@ public class TestCommandHandler implements CommandExecutor {
         if (length == 0) {
             if (block == null)
                 return true;
-            this.villager = new BaseVillager(p.getWorld(), block.getLocation().add(0, 1, 0), VillagerType.PLAINS);
-//            this.villager.setTarget(((CraftPlayer) p).getHandle(), EntityTargetEvent.TargetReason.CUSTOM, true);
+            BaseVillager villager = new BaseVillager(p.getWorld(), block.getLocation().add(0, 1, 0), VillagerType.PLAINS);
+
+            VillagerWolf wolf = new VillagerWolf(p.getWorld(), block.getLocation().add(0, 1, 0));
+            wolf.setOwnerUUID(villager.getUUID());
         } else {
             MessageUtil.sendMessage(p, "Invalid testing format!");
             return true;

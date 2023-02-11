@@ -31,7 +31,7 @@ import java.util.*;
 
 public class InteractWithFenceGate extends OneShot<Villager> {
 
-    public static final String REGISTRY_KEY_FENCE_GATE_TO_CLOSE = "fence_gates_to_close";
+    public static final String REGISTRY_KEY_FENCE_GATE_TO_CLOSE = "settlements_fence_gates_to_close";
     public static MemoryModuleType<Set<GlobalPos>> MEMORY_FENCE_GATE_TO_CLOSE;
 
     private static final int COOLDOWN_BEFORE_RERUNNING_IN_SAME_NODE = 20;

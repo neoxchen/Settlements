@@ -9,6 +9,7 @@ import dev.breeze.settlements.entities.villagers.behaviors.ShearSheepBehavior;
 import dev.breeze.settlements.entities.villagers.goals.item_toss.TossItemGoal;
 import dev.breeze.settlements.entities.villagers.navigation.VillagerNavigation;
 import dev.breeze.settlements.utils.LogUtil;
+import dev.breeze.settlements.utils.MessageUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -369,6 +370,20 @@ public class BaseVillager extends Villager {
         for (Class clazz : hostiles)
             this.targetSelector.addGoal(GOAL_PRIORITY + 1, new NearestAttackableTargetGoal<>(this, clazz, true));
         this.goalSelector.addGoal(GOAL_PRIORITY, new TossItemGoal(this, entries.toArray(new TossItemGoal.ItemEntry[0]), 6));
+    }
+
+    /*
+     * Interaction methods
+     */
+
+    /**
+     * Receive an item from another entity or something???
+     *
+     * @return whether the receving is successful????
+     */
+    public boolean receiveItem(ItemStack item) {
+        MessageUtil.broadcast("&b[DEBUG] Villager received item " + item.getType() + "!");
+        return false;
     }
 
     /*

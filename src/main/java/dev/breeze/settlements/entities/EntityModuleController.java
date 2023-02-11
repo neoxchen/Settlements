@@ -5,6 +5,8 @@ import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.villagers.VillagerRestockEvent;
 import dev.breeze.settlements.entities.villagers.behaviors.InteractWithFenceGate;
 import dev.breeze.settlements.entities.wolves.VillagerWolf;
+import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
+import dev.breeze.settlements.entities.wolves.sensors.WolfNearbyItemsSensor;
 import dev.breeze.settlements.utils.BaseModuleController;
 import dev.breeze.settlements.utils.LogUtil;
 import net.minecraft.core.MappedRegistry;
@@ -17,6 +19,8 @@ import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.sensing.Sensor;
+import net.minecraft.world.entity.ai.sensing.SensorType;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.v1_19_R2.CraftServer;
 import org.bukkit.plugin.PluginManager;
@@ -24,14 +28,14 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
-import static dev.breeze.settlements.entities.villagers.behaviors.InteractWithFenceGate.REGISTRY_KEY_FENCE_GATE_TO_CLOSE;
+import java.util.function.Supplier;
 
 public class EntityModuleController extends BaseModuleController {
 
@@ -44,8 +48,10 @@ public class EntityModuleController extends BaseModuleController {
                     VillagerWolf.ENTITY_TYPE, VillagerWolf.getEntityTypeBuilder()
             ));
 
+            // Register memories and sensors
             this.registerMemories();
-        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException | NoSuchFieldException e) {
+            this.registerSensors();
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException | NoSuchFieldException | InstantiationException e) {
             LogUtil.exception(e, "Exception encountered while registering modules!");
             return false;
         }
@@ -73,8 +79,7 @@ public class EntityModuleController extends BaseModuleController {
     private void registerEntities(Map<String, EntityType.Builder<Entity>> entityTypeMap) throws IllegalAccessException, InvocationTargetException,
             NoSuchMethodException, NoSuchFieldException {
         // Get entity type registry
-        CraftServer server = ((CraftServer) Bukkit.getServer());
-        DedicatedServer dedicatedServer = server.getServer();
+        DedicatedServer dedicatedServer = ((CraftServer) Bukkit.getServer()).getServer();
         WritableRegistry<EntityType<?>> entityTypeRegistry =
                 (WritableRegistry<EntityType<?>>) dedicatedServer.registryAccess().registryOrThrow(Registries.ENTITY_TYPE);
 
@@ -111,10 +116,9 @@ public class EntityModuleController extends BaseModuleController {
      * Registers all memory types created in this module to the registry
      * - must be done before the world loads
      */
-    private void registerMemories() throws IllegalAccessException, InvocationTargetException, NoSuchMethodException, NoSuchFieldException {
+    private void registerMemories() throws IllegalAccessException, NoSuchMethodException, NoSuchFieldException {
         // Get memory module type registry
-        CraftServer server = ((CraftServer) Bukkit.getServer());
-        DedicatedServer dedicatedServer = server.getServer();
+        DedicatedServer dedicatedServer = ((CraftServer) Bukkit.getServer()).getServer();
         WritableRegistry<MemoryModuleType<?>> registry =
                 (WritableRegistry<MemoryModuleType<?>>) dedicatedServer.registryAccess().registryOrThrow(Registries.MEMORY_MODULE_TYPE);
 
@@ -125,13 +129,9 @@ public class EntityModuleController extends BaseModuleController {
         frozen.setAccessible(true);
         frozen.set(registry, false);
 
-        // Unlock register method
-        // a = private static <U> MemoryModuleType<U> register(String id)
-        Method register = MemoryModuleType.class.getDeclaredMethod("a", String.class);
-        register.setAccessible(true);
-
         // Build & register memories
-        InteractWithFenceGate.MEMORY_FENCE_GATE_TO_CLOSE = registerMemory(REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
+        InteractWithFenceGate.MEMORY_FENCE_GATE_TO_CLOSE = registerMemory(InteractWithFenceGate.REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
+        WolfFetchItemBehavior.NEARBY_ITEMS_MEMORY = registerMemory(WolfFetchItemBehavior.REGISTRY_KEY_NEARBY_ITEMS_MEMORY, null);
 
         // Re-freeze registry
         LogUtil.info("Re-freezing memory module type registry...");
@@ -143,6 +143,40 @@ public class EntityModuleController extends BaseModuleController {
             return Registry.register(BuiltInRegistries.MEMORY_MODULE_TYPE, new ResourceLocation(id), new MemoryModuleType<>(Optional.empty()));
         }
         return Registry.register(BuiltInRegistries.MEMORY_MODULE_TYPE, new ResourceLocation(id), new MemoryModuleType<>(Optional.of(codec)));
+    }
+
+    /**
+     * Registers all sensor types created in this module to the registry
+     * - must be done before the world loads
+     */
+    private void registerSensors() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException, NoSuchFieldException,
+            InstantiationException {
+        // Get sensor type registry
+        DedicatedServer dedicatedServer = ((CraftServer) Bukkit.getServer()).getServer();
+        WritableRegistry<SensorType<?>> registry = (WritableRegistry<SensorType<?>>) dedicatedServer.registryAccess().registryOrThrow(Registries.SENSOR_TYPE);
+
+        // Unfreeze registry
+        LogUtil.info("Unfreezing sensor type registry...");
+        // l = private boolean frozen
+        Field frozen = MappedRegistry.class.getDeclaredField("l");
+        frozen.setAccessible(true);
+        frozen.set(registry, false);
+
+        // Build & register sensors
+        WolfNearbyItemsSensor.NEARBY_ITEMS_SENSOR = registerSensor(WolfNearbyItemsSensor.REGISTRY_KEY_NEARBY_ITEMS_SENSOR, WolfNearbyItemsSensor::new);
+
+        // Re-freeze registry
+        LogUtil.info("Re-freezing sensor type registry...");
+        BuiltInRegistries.SENSOR_TYPE.freeze();
+    }
+
+    private <U extends Sensor<?>> SensorType<U> registerSensor(@Nonnull String id, @Nonnull Supplier<U> factory) throws NoSuchMethodException,
+            InvocationTargetException, InstantiationException, IllegalAccessException {
+        Constructor<SensorType> constructor = SensorType.class.getDeclaredConstructor(Supplier.class);
+        constructor.setAccessible(true);
+
+        SensorType<?> sensor = constructor.newInstance(factory);
+        return (SensorType<U>) Registry.register(BuiltInRegistries.SENSOR_TYPE, new ResourceLocation(id), sensor);
     }
 
 

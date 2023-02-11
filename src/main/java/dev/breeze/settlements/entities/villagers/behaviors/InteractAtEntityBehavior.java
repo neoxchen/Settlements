@@ -1,14 +1,11 @@
 package dev.breeze.settlements.entities.villagers.behaviors;
 
-import dev.breeze.settlements.utils.MessageUtil;
 import lombok.Getter;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.npc.Villager;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 
 import java.util.Map;
 
@@ -114,10 +111,10 @@ public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
     @Override
     protected final boolean checkExtraStartConditions(ServerLevel level, Villager self) {
         // TODO: remove debugging action bar
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            MessageUtil.sendActionbar(p, "&a%s: %d - target? %s - reach? %s", this.getClass().getSimpleName(), this.cooldown,
-                    String.valueOf(this.hasTarget()), String.valueOf(this.isTargetReachable(self)));
-        }
+//        for (Player p : Bukkit.getOnlinePlayers()) {
+//            MessageUtil.sendActionbar(p, "&a%s: %d - target? %s - reach? %s", this.getClass().getSimpleName(), this.cooldown,
+//                    String.valueOf(this.hasTarget()), String.valueOf(this.isTargetReachable(self)));
+//        }
 
         // Check if we are still in cooldown
         if (--this.cooldown > 0)
@@ -129,8 +126,8 @@ public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
             return false;
         }
 
-        // Only reached when (scan) cooldown == 0
-        return this.scan(level, self);
+        // Only reached when (scan) cooldown == 0 or has target
+        return this.hasTarget() || this.scan(level, self);
     }
 
     /**

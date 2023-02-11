@@ -4,40 +4,62 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Dynamic;
+import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.wolves.behaviors.SitBehaviorController;
 import dev.breeze.settlements.entities.wolves.behaviors.TestWolfBehavior;
+import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
+import dev.breeze.settlements.entities.wolves.behaviors.WolfPlayWithEntityBehavior;
+import dev.breeze.settlements.entities.wolves.goals.WolfFollowOwnerGoal;
+import dev.breeze.settlements.entities.wolves.goals.WolfSitWhenOrderedToGoal;
+import dev.breeze.settlements.entities.wolves.sensors.WolfNearbyItemsSensor;
 import dev.breeze.settlements.utils.LogUtil;
 import dev.breeze.settlements.utils.TimeUtil;
+import lombok.Getter;
+import lombok.Setter;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
+import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
+import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.schedule.Schedule;
 import net.minecraft.world.entity.schedule.ScheduleBuilder;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.level.pathfinder.PathFinder;
+import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_19_R2.CraftWorld;
 import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.Nonnull;
+import java.util.UUID;
 
 public class VillagerWolf extends Wolf {
 
     public static final String ENTITY_TYPE = "settlements_wolf";
-    public static final int GOAL_PRIORITY = 100;
 
     private static final int MAX_CHECK_SCHEDULE_COOLDOWN = TimeUtil.seconds(30);
     private int checkScheduleCooldown;
+
+    @Getter
+    @Setter
+    private boolean isFetching;
 
     /**
      * Constructor called when Minecraft tries to load the entity
@@ -61,8 +83,21 @@ public class VillagerWolf extends Wolf {
     }
 
     private void init() {
-        this.initPathfinderGoals();
-        this.refreshBrain(this.level.getMinecraftWorld());
+        // TODO: improve navigation to ignore fences
+//        this.navigation = new WolfNavigation(this, this.level);
+
+        // Configure pathfinder goals
+        this.initGoals();
+
+        // Set wolf to be tamed by a random UID
+        this.setTame(true);
+        this.setOwnerUUID(UUID.randomUUID());
+        this.setCollarColor(DyeColor.LIME);
+
+        // Set step height to 1.5 (able to cross fences)
+        this.maxUpStep = 1.5F;
+
+        this.isFetching = false;
     }
 
     /**
@@ -108,6 +143,24 @@ public class VillagerWolf extends Wolf {
         nbt.put("CustomVillagerData", villagerData);
     }
 
+    private void initGoals() {
+        // Remove selected default goals
+        this.goalSelector.removeAllGoals((goal -> goal instanceof SitWhenOrderedToGoal || goal instanceof FollowOwnerGoal));
+        // Add replacement goals
+        this.goalSelector.addGoal(2, new WolfSitWhenOrderedToGoal(this));
+        this.goalSelector.addGoal(6, new WolfFollowOwnerGoal(this, 1.0D, 10.0F, 2.0F, false));
+
+        // TODO: Add extra goals
+
+        // Add target
+//        this.targetSelector.addGoal(GOAL_PRIORITY, new HurtByTargetGoal(this, Villager.class).setAlertOthers(VillagerWolf.class));
+
+//        Class[] hostiles = new Class[]{Zombie.class, Pillager.class, Vindicator.class, Vex.class, Witch.class, Evoker.class, Illusioner.class, Ravager.class};
+//        for (Class clazz : hostiles)
+//            this.targetSelector.addGoal(GOAL_PRIORITY + 1, new NearestAttackableTargetGoal<>(this, clazz, true));
+//        this.goalSelector.addGoal(GOAL_PRIORITY, new TossItemGoal(this, new TossItemGoal.ItemEntry[]{}, 6));
+    }
+
     /*
      * Brain-related methods
      */
@@ -118,9 +171,11 @@ public class VillagerWolf extends Wolf {
 
     @Override
     protected @Nonnull Brain.Provider<Wolf> brainProvider() {
-        ImmutableList<MemoryModuleType<Wolf>> memoryTypes = new ImmutableList.Builder<MemoryModuleType<Wolf>>()
+        ImmutableList<MemoryModuleType<?>> memoryTypes = new ImmutableList.Builder<MemoryModuleType<?>>()
+                .add(WolfFetchItemBehavior.NEARBY_ITEMS_MEMORY)
                 .build();
-        ImmutableList<SensorType<Sensor<Wolf>>> sensorTypes = new ImmutableList.Builder<SensorType<Sensor<Wolf>>>()
+        ImmutableList<SensorType<? extends Sensor<Wolf>>> sensorTypes = new ImmutableList.Builder<SensorType<? extends Sensor<Wolf>>>()
+                .add(WolfNearbyItemsSensor.NEARBY_ITEMS_SENSOR)
                 .build();
         return Brain.provider(memoryTypes, sensorTypes);
     }
@@ -132,19 +187,11 @@ public class VillagerWolf extends Wolf {
         return brain;
     }
 
-    public void refreshBrain(@NotNull ServerLevel level) {
-        Brain<Wolf> brain = this.getBrain();
-
-        brain.stopAll(level, this);
-        this.brain = brain.copyWithoutBehaviors();
-        this.registerBrainGoals(this.getBrain());
-    }
-
     @Override
     public void tick() {
         super.tick();
 
-        // Check schedule if needed
+        // Check schedule on a cooldown
         if (--this.checkScheduleCooldown < 0) {
             this.brain.updateActivityFromSchedule(this.level.getDayTime(), this.level.getGameTime());
             this.checkScheduleCooldown = MAX_CHECK_SCHEDULE_COOLDOWN;
@@ -172,20 +219,23 @@ public class VillagerWolf extends Wolf {
         brain.setSchedule(wolfSchedule);
 
         // Register behaviors
+        // TODO: Are there any additional core behaviors needed?
         brain.addActivity(Activity.CORE, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(1, new TestWolfBehavior("CORE")))
+//                .add(Pair.of(1, new TestWolfBehavior("CORE")))
                 .build());
+        // TODO: Is the default wander/idle behavior enough?
         brain.addActivity(Activity.IDLE, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(5, SitBehaviorController.stand()))
-                .add(Pair.of(1, new TestWolfBehavior("IDLE")))
+//                .add(Pair.of(1, new TestWolfBehavior("IDLE")))
                 .build());
+        // TODO: Chase sheep behaviors?
         brain.addActivity(Activity.WORK, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(5, SitBehaviorController.stand()))
-                .add(Pair.of(0, new TestWolfBehavior("WORK")))
+                .add(Pair.of(1, new WolfFetchItemBehavior((itemEntity) -> true)))
                 .build());
         brain.addActivity(Activity.PLAY, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(5, SitBehaviorController.stand()))
-                .add(Pair.of(0, new TestWolfBehavior("PLAY")))
+                .add(Pair.of(0, new WolfPlayWithEntityBehavior()))
                 .build());
         brain.addActivity(Activity.REST, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(3, SitBehaviorController.sit()))
@@ -198,18 +248,48 @@ public class VillagerWolf extends Wolf {
         brain.setActiveActivityIfPossible(Activity.IDLE);
     }
 
-    /*
-     * Pathfinder goals
-     */
-    private void initPathfinderGoals() {
-        // Add target
-//        this.targetSelector.addGoal(GOAL_PRIORITY, new HurtByTargetGoal(this, Villager.class).setAlertOthers(VillagerWolf.class));
-
-//        Class[] hostiles = new Class[]{Zombie.class, Pillager.class, Vindicator.class, Vex.class, Witch.class, Evoker.class, Illusioner.class, Ravager.class};
-//        for (Class clazz : hostiles)
-//            this.targetSelector.addGoal(GOAL_PRIORITY + 1, new NearestAttackableTargetGoal<>(this, clazz, true));
-//        this.goalSelector.addGoal(GOAL_PRIORITY, new TossItemGoal(this, new TossItemGoal.ItemEntry[]{}, 6));
+    @Override
+    public boolean isTame() {
+        return true;
     }
 
+    @Override
+    @Nullable
+    public BaseVillager getOwner() {
+        // Return null if no owner
+        if (this.getOwnerUUID() == null)
+            return null;
+
+        // Try to get owner entity
+        Entity entity = this.level.getMinecraftWorld().getEntity(this.getOwnerUUID());
+        if (!(entity instanceof BaseVillager villager))
+            return null;
+
+        return villager;
+    }
+
+    /*
+     * Custom navigation for wolves to ignore fence gate
+     */
+    private static class WolfNavigation extends GroundPathNavigation {
+
+        public WolfNavigation(Mob entity, Level world) {
+            super(entity, world);
+        }
+
+        @Override
+        protected PathFinder createPathFinder(int range) {
+            this.nodeEvaluator = new WolfNodeEvaluator();
+            this.nodeEvaluator.setCanPassDoors(true);
+            return new PathFinder(this.nodeEvaluator, range);
+        }
+    }
+
+    private static class WolfNodeEvaluator extends WalkNodeEvaluator {
+        @Override
+        protected BlockPathTypes evaluateBlockPathType(BlockGetter world, boolean canOpenDoors, boolean canEnterOpenDoors, BlockPos pos, BlockPathTypes type) {
+            return type == BlockPathTypes.FENCE ? BlockPathTypes.OPEN : super.evaluateBlockPathType(world, canOpenDoors, canEnterOpenDoors, pos, type);
+        }
+    }
 
 }
