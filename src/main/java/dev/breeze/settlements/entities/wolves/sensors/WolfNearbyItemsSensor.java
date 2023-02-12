@@ -1,14 +1,15 @@
 package dev.breeze.settlements.entities.wolves.sensors;
 
-import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
+import dev.breeze.settlements.entities.wolves.VillagerWolf;
+import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
 import dev.breeze.settlements.utils.TimeUtil;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.sensing.Sensor;
-import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.schedule.Activity;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -17,18 +18,15 @@ import java.util.Set;
 
 public class WolfNearbyItemsSensor extends Sensor<Wolf> {
 
-    public static final String REGISTRY_KEY_NEARBY_ITEMS_SENSOR = "settlements_nearby_items_sensor";
-    public static SensorType<WolfNearbyItemsSensor> NEARBY_ITEMS_SENSOR;
-
     /**
      * How far away to scan for items horizontally
      */
-    private static final double RANGE_HORIZONTAL = 20.0D;
+    private static final double RANGE_HORIZONTAL = 15.0D;
 
     /**
      * How far away to scan for items vertically
      */
-    private static final double RANGE_VERTICAL = 4.5D;
+    private static final double RANGE_VERTICAL = 3.5D;
 
     /**
      * How often will the wolf scans for nearby items
@@ -40,23 +38,31 @@ public class WolfNearbyItemsSensor extends Sensor<Wolf> {
     }
 
     @Override
-    protected void doTick(ServerLevel world, Wolf entity) {
+    protected void doTick(ServerLevel world, Wolf wolf) {
+        // Type cast checking
+        if (!(wolf instanceof VillagerWolf self))
+            return;
+
+        // Check activity == WORK
+        Brain<Wolf> brain = self.getBrain();
+        if (brain.getSchedule().getActivityAt((int) world.getWorld().getTime()) != Activity.WORK)
+            return;
+
         // Scan for nearby dropped items
-        List<ItemEntity> list = world.getEntitiesOfClass(ItemEntity.class, entity.getBoundingBox().inflate(RANGE_HORIZONTAL, RANGE_VERTICAL,
+        List<ItemEntity> list = world.getEntitiesOfClass(ItemEntity.class, self.getBoundingBox().inflate(RANGE_HORIZONTAL, RANGE_VERTICAL,
                 RANGE_HORIZONTAL), (itemEntity -> itemEntity != null && !itemEntity.isPassenger()));
 
         // Set or erase memory
-        Brain<?> brain = entity.getBrain();
         if (list.isEmpty())
-            brain.eraseMemory(WolfFetchItemBehavior.NEARBY_ITEMS_MEMORY);
+            brain.eraseMemory(WolfMemoryType.NEARBY_ITEMS);
         else
-            brain.setMemory(WolfFetchItemBehavior.NEARBY_ITEMS_MEMORY, Optional.of(list));
+            brain.setMemory(WolfMemoryType.NEARBY_ITEMS, Optional.of(list));
     }
 
     @Override
     @Nonnull
     public Set<MemoryModuleType<?>> requires() {
-        return Set.of(WolfFetchItemBehavior.NEARBY_ITEMS_MEMORY);
+        return Set.of(WolfMemoryType.NEARBY_ITEMS);
     }
 
 }

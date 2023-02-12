@@ -1,6 +1,7 @@
 package dev.breeze.settlements.entities.villagers.behaviors;
 
 import com.google.common.collect.Sets;
+import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.utils.RandomUtil;
 import dev.breeze.settlements.utils.sound.SoundUtil;
 import net.minecraft.core.BlockPos;
@@ -30,9 +31,6 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 public class InteractWithFenceGate extends OneShot<Villager> {
-
-    public static final String REGISTRY_KEY_FENCE_GATE_TO_CLOSE = "settlements_fence_gates_to_close";
-    public static MemoryModuleType<Set<GlobalPos>> MEMORY_FENCE_GATE_TO_CLOSE;
 
     private static final int COOLDOWN_BEFORE_RERUNNING_IN_SAME_NODE = 20;
     private static final double SKIP_CLOSING_IF_FURTHER_THAN = 3.0D;
@@ -136,14 +134,14 @@ public class InteractWithFenceGate extends OneShot<Villager> {
         Brain<Villager> brain = villager.getBrain();
 
         // If there are no memory of fence gates, create new memory
-        if (!brain.hasMemoryValue(MEMORY_FENCE_GATE_TO_CLOSE)) {
+        if (!brain.hasMemoryValue(VillagerMemoryType.FENCE_GATE_TO_CLOSE)) {
             Set<GlobalPos> memory = Sets.newHashSet(globalpos);
-            brain.setMemory(MEMORY_FENCE_GATE_TO_CLOSE, Optional.of(memory));
+            brain.setMemory(VillagerMemoryType.FENCE_GATE_TO_CLOSE, Optional.of(memory));
             return;
         }
 
         // Otherwise, add to the existing memory
-        Set<GlobalPos> memory = villager.getBrain().getMemory(MEMORY_FENCE_GATE_TO_CLOSE).get();
+        Set<GlobalPos> memory = villager.getBrain().getMemory(VillagerMemoryType.FENCE_GATE_TO_CLOSE).get();
         memory.add(globalpos);
     }
 
@@ -151,11 +149,11 @@ public class InteractWithFenceGate extends OneShot<Villager> {
         Brain<Villager> brain = villager.getBrain();
 
         // If there are no memory, ignore
-        if (!brain.hasMemoryValue(MEMORY_FENCE_GATE_TO_CLOSE))
+        if (!brain.hasMemoryValue(VillagerMemoryType.FENCE_GATE_TO_CLOSE))
             return;
 
         // Loop through each remembered position
-        Set<GlobalPos> memory = villager.getBrain().getMemory(MEMORY_FENCE_GATE_TO_CLOSE).get();
+        Set<GlobalPos> memory = villager.getBrain().getMemory(VillagerMemoryType.FENCE_GATE_TO_CLOSE).get();
         Iterator<GlobalPos> iterator = memory.iterator();
         while (iterator.hasNext()) {
             GlobalPos pos = iterator.next();

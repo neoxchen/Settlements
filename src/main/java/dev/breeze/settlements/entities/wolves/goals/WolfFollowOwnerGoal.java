@@ -15,7 +15,7 @@ public class WolfFollowOwnerGoal extends FollowOwnerGoal {
     @Override
     public boolean canUse() {
         // Don't follow owner if fetching
-        if (this.wolf.isFetching())
+        if (this.wolf.isStopFollowOwner())
             return false;
         // Otherwise, use super's decision
         return super.canUse();
@@ -24,7 +24,7 @@ public class WolfFollowOwnerGoal extends FollowOwnerGoal {
     @Override
     public boolean canContinueToUse() {
         // Don't follow owner if fetching
-        if (this.wolf.isFetching())
+        if (this.wolf.isStopFollowOwner())
             return false;
         // Otherwise, use super's decision
         return super.canContinueToUse();

@@ -3,10 +3,12 @@ package dev.breeze.settlements.entities;
 import com.mojang.serialization.Codec;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.villagers.VillagerRestockEvent;
-import dev.breeze.settlements.entities.villagers.behaviors.InteractWithFenceGate;
+import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.entities.wolves.VillagerWolf;
-import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
+import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
 import dev.breeze.settlements.entities.wolves.sensors.WolfNearbyItemsSensor;
+import dev.breeze.settlements.entities.wolves.sensors.WolfSensorType;
+import dev.breeze.settlements.entities.wolves.sensors.WolfSniffableEntitiesSensor;
 import dev.breeze.settlements.utils.BaseModuleController;
 import dev.breeze.settlements.utils.LogUtil;
 import net.minecraft.core.MappedRegistry;
@@ -130,8 +132,11 @@ public class EntityModuleController extends BaseModuleController {
         frozen.set(registry, false);
 
         // Build & register memories
-        InteractWithFenceGate.MEMORY_FENCE_GATE_TO_CLOSE = registerMemory(InteractWithFenceGate.REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
-        WolfFetchItemBehavior.NEARBY_ITEMS_MEMORY = registerMemory(WolfFetchItemBehavior.REGISTRY_KEY_NEARBY_ITEMS_MEMORY, null);
+        VillagerMemoryType.FENCE_GATE_TO_CLOSE = registerMemory(VillagerMemoryType.REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
+        VillagerMemoryType.WALK_DOG_TARGET = registerMemory(VillagerMemoryType.REGISTRY_KEY_WALK_DOG_TARGET, null);
+
+        WolfMemoryType.NEARBY_ITEMS = registerMemory(WolfMemoryType.REGISTRY_KEY_NEARBY_ITEMS, null);
+        WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_SNIFFABLE_ENTITIES, null);
 
         // Re-freeze registry
         LogUtil.info("Re-freezing memory module type registry...");
@@ -163,7 +168,8 @@ public class EntityModuleController extends BaseModuleController {
         frozen.set(registry, false);
 
         // Build & register sensors
-        WolfNearbyItemsSensor.NEARBY_ITEMS_SENSOR = registerSensor(WolfNearbyItemsSensor.REGISTRY_KEY_NEARBY_ITEMS_SENSOR, WolfNearbyItemsSensor::new);
+        WolfSensorType.NEARBY_ITEMS = registerSensor(WolfSensorType.REGISTRY_KEY_NEARBY_ITEMS, WolfNearbyItemsSensor::new);
+        WolfSensorType.NEARBY_SNIFFABLE_ENTITIES = registerSensor(WolfSensorType.REGISTRY_KEY_NEARBY_SNIFFABLE_ENTITIES, WolfSniffableEntitiesSensor::new);
 
         // Re-freeze registry
         LogUtil.info("Re-freezing sensor type registry...");

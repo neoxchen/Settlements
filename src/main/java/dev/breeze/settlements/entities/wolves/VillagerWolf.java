@@ -7,11 +7,12 @@ import com.mojang.serialization.Dynamic;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.wolves.behaviors.TestWolfBehavior;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
-import dev.breeze.settlements.entities.wolves.behaviors.WolfPlayWithEntityBehavior;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfSitBehaviorController;
+import dev.breeze.settlements.entities.wolves.behaviors.WolfWalkBehavior;
 import dev.breeze.settlements.entities.wolves.goals.WolfFollowOwnerGoal;
 import dev.breeze.settlements.entities.wolves.goals.WolfSitWhenOrderedToGoal;
-import dev.breeze.settlements.entities.wolves.sensors.WolfNearbyItemsSensor;
+import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
+import dev.breeze.settlements.entities.wolves.sensors.WolfSensorType;
 import dev.breeze.settlements.utils.LogUtil;
 import dev.breeze.settlements.utils.TimeUtil;
 import lombok.Getter;
@@ -59,7 +60,7 @@ public class VillagerWolf extends Wolf {
 
     @Getter
     @Setter
-    private boolean isFetching;
+    private boolean stopFollowOwner;
 
     /**
      * Constructor called when Minecraft tries to load the entity
@@ -97,7 +98,7 @@ public class VillagerWolf extends Wolf {
         // Set step height to 1.5 (able to cross fences)
         this.maxUpStep = 1.5F;
 
-        this.isFetching = false;
+        this.stopFollowOwner = false;
     }
 
     /**
@@ -172,10 +173,12 @@ public class VillagerWolf extends Wolf {
     @Override
     protected @Nonnull Brain.Provider<Wolf> brainProvider() {
         ImmutableList<MemoryModuleType<?>> memoryTypes = new ImmutableList.Builder<MemoryModuleType<?>>()
-                .add(WolfFetchItemBehavior.NEARBY_ITEMS_MEMORY)
+                .add(WolfMemoryType.NEARBY_ITEMS)
+                .add(WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES)
                 .build();
         ImmutableList<SensorType<? extends Sensor<Wolf>>> sensorTypes = new ImmutableList.Builder<SensorType<? extends Sensor<Wolf>>>()
-                .add(WolfNearbyItemsSensor.NEARBY_ITEMS_SENSOR)
+                .add(WolfSensorType.NEARBY_ITEMS)
+                .add(WolfSensorType.NEARBY_SNIFFABLE_ENTITIES)
                 .build();
         return Brain.provider(memoryTypes, sensorTypes);
     }
@@ -235,7 +238,7 @@ public class VillagerWolf extends Wolf {
                 .build());
         brain.addActivity(Activity.PLAY, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(5, WolfSitBehaviorController.stand()))
-                .add(Pair.of(0, new WolfPlayWithEntityBehavior()))
+                .add(Pair.of(0, new WolfWalkBehavior()))
                 .build());
         brain.addActivity(Activity.REST, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(3, WolfSitBehaviorController.sit()))

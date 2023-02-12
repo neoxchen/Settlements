@@ -6,7 +6,9 @@ import com.mojang.datafixers.util.Pair;
 import dev.breeze.settlements.entities.villagers.behaviors.InteractWithFenceGate;
 import dev.breeze.settlements.entities.villagers.behaviors.RepairIronGolemBehavior;
 import dev.breeze.settlements.entities.villagers.behaviors.ShearSheepBehavior;
+import dev.breeze.settlements.entities.villagers.behaviors.WalkDogBehavior;
 import dev.breeze.settlements.entities.villagers.goals.item_toss.TossItemGoal;
+import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.entities.villagers.navigation.VillagerNavigation;
 import dev.breeze.settlements.utils.LogUtil;
 import dev.breeze.settlements.utils.MessageUtil;
@@ -139,7 +141,8 @@ public class BaseVillager extends Villager {
 
             ImmutableList<MemoryModuleType<?>> customMemoryTypes = new ImmutableList.Builder<MemoryModuleType<?>>()
                     .addAll(DEFAULT_MEMORY_TYPES)
-                    .add(InteractWithFenceGate.MEMORY_FENCE_GATE_TO_CLOSE)
+                    .add(VillagerMemoryType.FENCE_GATE_TO_CLOSE)
+                    .add(VillagerMemoryType.WALK_DOG_TARGET)
                     .build();
 
             return Brain.provider(customMemoryTypes, DEFAULT_SENSOR_TYPES);
@@ -170,6 +173,12 @@ public class BaseVillager extends Villager {
                 .addAll(this.getExtraCoreBehaviors())
                 .build());
 
+        // Register idle activities
+        brain.addActivity(Activity.IDLE, new ImmutableList.Builder<Pair<Integer, ? extends BehaviorControl<? super Villager>>>()
+                .addAll(VillagerGoalPackages.getIdlePackage(profession, 0.5F))
+                .addAll(this.getExtraIdleBehaviors())
+                .build());
+
         // Register work activities if not baby
         if (this.isBaby()) {
             brain.setSchedule(Schedule.VILLAGER_BABY);
@@ -188,7 +197,6 @@ public class BaseVillager extends Villager {
         brain.addActivityWithConditions(Activity.MEET, VillagerGoalPackages.getMeetPackage(profession, 0.5F),
                 ImmutableSet.of(Pair.of(MemoryModuleType.MEETING_POINT, MemoryStatus.VALUE_PRESENT)));
         brain.addActivity(Activity.REST, VillagerGoalPackages.getRestPackage(profession, 0.5F));
-        brain.addActivity(Activity.IDLE, VillagerGoalPackages.getIdlePackage(profession, 0.5F));
         brain.addActivity(Activity.PANIC, VillagerGoalPackages.getPanicPackage(profession, 0.5F));
         brain.addActivity(Activity.PRE_RAID, VillagerGoalPackages.getPreRaidPackage(profession, 0.5F));
         brain.addActivity(Activity.RAID, VillagerGoalPackages.getRaidPackage(profession, 0.5F));
@@ -204,6 +212,12 @@ public class BaseVillager extends Villager {
     public List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> getExtraCoreBehaviors() {
         return List.of(
                 Pair.of(0, new InteractWithFenceGate())
+        );
+    }
+
+    public List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> getExtraIdleBehaviors() {
+        return List.of(
+                Pair.of(3, new WalkDogBehavior())
         );
     }
 

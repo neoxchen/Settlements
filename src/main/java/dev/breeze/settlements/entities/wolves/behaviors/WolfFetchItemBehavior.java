@@ -2,13 +2,12 @@ package dev.breeze.settlements.entities.wolves.behaviors;
 
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.wolves.VillagerWolf;
-import dev.breeze.settlements.utils.MessageUtil;
+import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
 import dev.breeze.settlements.utils.TimeUtil;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.ai.behavior.Behavior;
-import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -24,9 +23,6 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 public class WolfFetchItemBehavior extends Behavior<Wolf> {
-
-    public static final String REGISTRY_KEY_NEARBY_ITEMS_MEMORY = "settlements_nearby_items_memory";
-    public static MemoryModuleType<List<ItemEntity>> NEARBY_ITEMS_MEMORY;
 
     /**
      * What speed will the wolf move at when fetching
@@ -68,7 +64,7 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
     public WolfFetchItemBehavior(@Nonnull Predicate<ItemEntity> criteria) {
         super(Map.of(
                 // There should be an item of interest to fetch
-                NEARBY_ITEMS_MEMORY, MemoryStatus.VALUE_PRESENT
+                WolfMemoryType.NEARBY_ITEMS, MemoryStatus.VALUE_PRESENT
         ), MAX_FETCH_DURATION);
 
         this.criteria = criteria;
@@ -98,7 +94,7 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
 
     private boolean scan(@Nonnull ServerLevel level, @Nonnull Wolf self) {
         // Scan for nearby items
-        Optional<List<ItemEntity>> itemMemory = self.getBrain().getMemory(NEARBY_ITEMS_MEMORY);
+        Optional<List<ItemEntity>> itemMemory = self.getBrain().getMemory(WolfMemoryType.NEARBY_ITEMS);
         if (itemMemory.isEmpty() || itemMemory.get().isEmpty())
             return false;
 
@@ -123,7 +119,7 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
         if (this.cooldown < -MAX_FETCH_DURATION)
             return false;
 
-        if (this.cachedOwner == null || this.target == null)
+        if (this.cachedOwner == null || this.target == null || !this.target.isAlive())
             return false;
 
         return this.checkExtraStartConditions(level, self);
@@ -131,10 +127,9 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
 
     @Override
     protected void start(ServerLevel level, Wolf self, long gameTime) {
-        MessageUtil.broadcast("Fetching started!");
         this.status = FetchStatus.SEEKING;
         if (self instanceof VillagerWolf villagerWolf)
-            villagerWolf.setFetching(true);
+            villagerWolf.setStopFollowOwner(true);
     }
 
     @Override
@@ -186,7 +181,7 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
         this.status = FetchStatus.STAND_BY;
 
         if (self instanceof VillagerWolf villagerWolf)
-            villagerWolf.setFetching(false);
+            villagerWolf.setStopFollowOwner(false);
 
         // Drop off the carried item at current position
         // - delivery not successful
