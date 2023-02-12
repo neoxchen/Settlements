@@ -122,7 +122,15 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
         if (this.cachedOwner == null || this.target == null || !this.target.isAlive())
             return false;
 
-        return this.checkExtraStartConditions(level, self);
+        // Check if another wolf has picked this item up
+        if (this.status == FetchStatus.SEEKING && this.target.isPassenger())
+            return false;
+
+        // Check if we've somehow dropped the item on the way back
+        if (this.status == FetchStatus.RETURNING && !this.target.isPassenger())
+            return false;
+
+        return true;
     }
 
     @Override
