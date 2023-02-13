@@ -3,10 +3,7 @@ package dev.breeze.settlements.entities.villagers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
-import dev.breeze.settlements.entities.villagers.behaviors.InteractWithFenceGate;
-import dev.breeze.settlements.entities.villagers.behaviors.RepairIronGolemBehavior;
-import dev.breeze.settlements.entities.villagers.behaviors.ShearSheepBehavior;
-import dev.breeze.settlements.entities.villagers.behaviors.WalkDogBehavior;
+import dev.breeze.settlements.entities.villagers.behaviors.*;
 import dev.breeze.settlements.entities.villagers.goals.item_toss.TossItemGoal;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.entities.villagers.navigation.VillagerNavigation;
@@ -45,6 +42,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class BaseVillager extends Villager {
 
@@ -192,10 +190,14 @@ public class BaseVillager extends Villager {
                     ImmutableSet.of(Pair.of(MemoryModuleType.JOB_SITE, MemoryStatus.VALUE_PRESENT)));
         }
 
+        // Register meet activities
+        brain.addActivityWithConditions(Activity.MEET, new ImmutableList.Builder<Pair<Integer, ? extends BehaviorControl<? super Villager>>>()
+                .addAll(VillagerGoalPackages.getMeetPackage(profession, 0.5F))
+                .addAll(this.getExtraMeetBehaviors(profession))
+                .build(), Set.of(Pair.of(MemoryModuleType.MEETING_POINT, MemoryStatus.VALUE_PRESENT)));
+
         // Register other activities
         // - copied from the parent class
-        brain.addActivityWithConditions(Activity.MEET, VillagerGoalPackages.getMeetPackage(profession, 0.5F),
-                ImmutableSet.of(Pair.of(MemoryModuleType.MEETING_POINT, MemoryStatus.VALUE_PRESENT)));
         brain.addActivity(Activity.REST, VillagerGoalPackages.getRestPackage(profession, 0.5F));
         brain.addActivity(Activity.PANIC, VillagerGoalPackages.getPanicPackage(profession, 0.5F));
         brain.addActivity(Activity.PRE_RAID, VillagerGoalPackages.getPreRaidPackage(profession, 0.5F));
@@ -257,6 +259,14 @@ public class BaseVillager extends Villager {
             behaviors.add(Pair.of(10, new RepairIronGolemBehavior()));
         }
 
+        return behaviors;
+    }
+
+    public List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> getExtraMeetBehaviors(VillagerProfession profession) {
+        List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> behaviors = new ArrayList<>();
+        if (profession == VillagerProfession.BUTCHER) {
+            behaviors.add(Pair.of(4, new FeedWolfBehavior()));
+        }
         return behaviors;
     }
 

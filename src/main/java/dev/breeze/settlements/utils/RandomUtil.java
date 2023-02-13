@@ -2,6 +2,7 @@ package dev.breeze.settlements.utils;
 
 import org.bukkit.Location;
 
+import java.util.List;
 import java.util.Random;
 
 public class RandomUtil {
@@ -20,6 +21,14 @@ public class RandomUtil {
 
     public static String randomString() {
         return String.valueOf(RANDOM.nextDouble() * 100);
+    }
+
+    public static <T> T choice(List<T> list) {
+        return list.get(RANDOM.nextInt(list.size()));
+    }
+
+    public static <T> T choice(T[] list) {
+        return list[RANDOM.nextInt(list.length)];
     }
 
 }
