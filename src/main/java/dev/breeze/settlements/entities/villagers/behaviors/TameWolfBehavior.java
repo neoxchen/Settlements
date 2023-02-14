@@ -9,6 +9,7 @@ import dev.breeze.settlements.utils.itemstack.ItemStackBuilder;
 import dev.breeze.settlements.utils.particle.ParticleUtil;
 import dev.breeze.settlements.utils.sound.SoundUtil;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -53,7 +54,7 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
                         // There should be living entities nearby
                         MemoryModuleType.NEAREST_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
                 ), TimeUtil.minutes(1), Math.pow(20, 2),
-                TimeUtil.hours(1), Math.pow(1, 2),
+                TimeUtil.hours(1), Math.pow(1.5, 2),
                 5, TimeUtil.seconds(1),
                 TimeUtil.seconds(20), TimeUtil.seconds(10));
 
@@ -72,10 +73,13 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
             // Check for nearby untamed wolves
             List<LivingEntity> target = brain.getMemory(MemoryModuleType.NEAREST_LIVING_ENTITIES).get();
             Optional<LivingEntity> nearestWolf = target.stream().filter(e -> {
-                if (e.getType() != EntityType.WOLF || !(e instanceof VillagerWolf villagerWolf))
+                if (e.getType() != EntityType.WOLF || !(e instanceof Wolf wolf))
                     return false;
-                // Check if wolf is already owned by another villager
-                return villagerWolf.getOwner() == null;
+                // Should not tame villager wolf
+                if (e instanceof VillagerWolf)
+                    return false;
+                // Check if wolf is already owned/tamed
+                return !wolf.isTame();
             }).findFirst();
 
             if (nearestWolf.isEmpty())
@@ -98,18 +102,16 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
     protected void tickExtra(ServerLevel level, Villager self, long gameTime) {
         self.setItemSlot(EquipmentSlot.MAINHAND, BONE);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
+
+        if (this.targetWolf != null)
+            self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetWolf, true));
     }
 
     @Override
     protected void navigateToTarget(ServerLevel level, Villager self, long gameTime) {
-        // Safety check
         if (this.targetWolf == null)
             return;
-
-        // Walk to the target golem
-        self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetWolf, true));
         self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetWolf, 0.6F, 1));
-        self.getLookControl().setLookAt(this.targetWolf);
     }
 
     @Override
@@ -131,12 +133,18 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
 
         // Successful taming logic
         if (successful) {
-            // Set wolf's owner
-            if (this.targetWolf instanceof VillagerWolf villagerWolf && self instanceof BaseVillager baseVillager)
+            // Remove the vanilla wolf and spawn a VillagerWolf instead
+            Location wolfLocation = new Location(level.getWorld(), this.targetWolf.getX(), this.targetWolf.getY(), this.targetWolf.getZ());
+            this.targetWolf.remove(Entity.RemovalReason.KILLED);
+            this.targetWolf = null;
+
+            // Spawn a VillagerWolf instead
+            VillagerWolf villagerWolf = new VillagerWolf(wolfLocation);
+            if (self instanceof BaseVillager baseVillager)
                 villagerWolf.tameByVillager(baseVillager);
 
             // Set memory
-            self.getBrain().setMemory(VillagerMemoryType.OWNED_DOG, Optional.of(this.targetWolf.getUUID()));
+            self.getBrain().setMemory(VillagerMemoryType.OWNED_DOG, Optional.of(villagerWolf.getUUID()));
 
             // Stop after taming
             this.stop(level, self, gameTime);
@@ -150,7 +158,7 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
         // Reset held item
         self.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
 
-        // Remove golem from interaction memory
+        // Remove interaction memory
         self.getBrain().eraseMemory(MemoryModuleType.INTERACTION_TARGET);
 
         // Reset variables

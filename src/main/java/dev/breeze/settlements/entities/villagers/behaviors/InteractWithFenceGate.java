@@ -30,7 +30,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-public class InteractWithFenceGate extends OneShot<Villager> {
+public final class InteractWithFenceGate extends OneShot<Villager> {
 
     private static final int COOLDOWN_BEFORE_RERUNNING_IN_SAME_NODE = 20;
     private static final double SKIP_CLOSING_IF_FURTHER_THAN = 3.0D;

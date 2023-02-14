@@ -121,18 +121,16 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
             return;
         self.setItemSlot(EquipmentSlot.MAINHAND, this.heldItem);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
+
+        if (this.targetWolf != null)
+            self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetWolf, true));
     }
 
     @Override
     protected void navigateToTarget(ServerLevel level, Villager self, long gameTime) {
-        // Safety check
         if (this.targetWolf == null)
             return;
-
-        // Walk to the target golem
-        self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetWolf, true));
         self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetWolf, 0.5F, 1));
-        self.getLookControl().setLookAt(this.targetWolf);
     }
 
     @Override

@@ -4,8 +4,6 @@ import dev.breeze.settlements.utils.TimeUtil;
 import dev.breeze.settlements.utils.itemstack.ItemStackBuilder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
@@ -97,6 +95,9 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
     protected void tickExtra(ServerLevel level, Villager self, long gameTime) {
         self.setItemSlot(EquipmentSlot.MAINHAND, SHEARS);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
+
+        if (this.targetSheep != null)
+            self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetSheep, true));
     }
 
     @Override
@@ -106,12 +107,10 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
             return;
 
         // Pathfind to the sheep
-        self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetSheep, true));
         self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetSheep, 0.5F, 1));
-        self.getLookControl().setLookAt(this.targetSheep);
 
-        // Apply slowness to the sheep
-        this.targetSheep.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, TimeUtil.seconds(5), 10, false, false));
+        // Stop any movement of the sheep
+        this.targetSheep.getNavigation().stop();
     }
 
     @Override

@@ -43,7 +43,6 @@ import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.level.pathfinder.PathFinder;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_19_R2.CraftWorld;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
@@ -71,10 +70,10 @@ public class VillagerWolf extends Wolf {
     }
 
     /**
-     * Constructor to spawn the villager in manually
+     * Constructor to spawn the villager in via plugin
      */
-    public VillagerWolf(@Nonnull World world, @Nonnull Location location) {
-        super(EntityType.WOLF, ((CraftWorld) world).getHandle());
+    public VillagerWolf(@Nonnull Location location) {
+        super(EntityType.WOLF, ((CraftWorld) location.getWorld()).getHandle());
         this.setPos(location.getX(), location.getY(), location.getZ());
         if (!this.level.addFreshEntity(this, CreatureSpawnEvent.SpawnReason.CUSTOM)) {
             throw new IllegalStateException("Failed to add custom wolf to world");

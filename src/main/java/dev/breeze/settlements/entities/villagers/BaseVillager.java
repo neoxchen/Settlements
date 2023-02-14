@@ -35,7 +35,6 @@ import net.minecraft.world.level.Level;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_19_R2.CraftWorld;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.inventory.ItemStack;
@@ -62,8 +61,8 @@ public class BaseVillager extends Villager {
     /**
      * Constructor to spawn the villager in manually
      */
-    public BaseVillager(@Nonnull World world, @Nonnull Location location, @Nonnull VillagerType villagertype) {
-        super(EntityType.VILLAGER, ((CraftWorld) world).getHandle(), villagertype);
+    public BaseVillager(@Nonnull Location location, @Nonnull VillagerType villagertype) {
+        super(EntityType.VILLAGER, ((CraftWorld) location.getWorld()).getHandle(), villagertype);
         this.setPos(location.getX(), location.getY(), location.getZ());
         if (!this.level.addFreshEntity(this, CreatureSpawnEvent.SpawnReason.CUSTOM)) {
             throw new IllegalStateException("Failed to add custom villager to world");
@@ -173,7 +172,7 @@ public class BaseVillager extends Villager {
         // Register idle activities
         brain.addActivity(Activity.IDLE, new ImmutableList.Builder<Pair<Integer, ? extends BehaviorControl<? super Villager>>>()
                 .addAll(VillagerGoalPackages.getIdlePackage(profession, 0.5F))
-                .add(Pair.of(10, new RunOne<>(this.getExtraIdleBehaviors())))
+                .add(Pair.of(10, new RunOne<>(this.getExtraIdleBehaviors(profession))))
                 .build());
 
         // Register work activities if not baby
@@ -216,12 +215,21 @@ public class BaseVillager extends Villager {
         );
     }
 
-    public List<Pair<? extends BehaviorControl<? super Villager>, Integer>> getExtraIdleBehaviors() {
-        return List.of(
-                Pair.of(new TameWolfBehavior(), 1),
-                Pair.of(new WalkDogBehavior(), 1),
-                Pair.of(new WashWolfBehavior(), 1)
-        );
+    public List<Pair<? extends BehaviorControl<? super Villager>, Integer>> getExtraIdleBehaviors(VillagerProfession profession) {
+        List<Pair<? extends BehaviorControl<? super Villager>, Integer>> behaviors = new ArrayList<>(List.of(
+                // TODO: default behaviors?
+        ));
+
+        // Tame wolf behavior
+        if (profession == VillagerProfession.SHEPHERD || profession == VillagerProfession.FARMER || profession == VillagerProfession.BUTCHER) {
+            behaviors.addAll(List.of(
+                    Pair.of(new TameWolfBehavior(), 1),
+                    Pair.of(new WalkDogBehavior(), 1),
+                    Pair.of(new WashWolfBehavior(), 1)
+            ));
+        }
+
+        return behaviors;
     }
 
     public List<Pair<? extends BehaviorControl<? super Villager>, Integer>> getExtraWorkBehaviors(VillagerProfession profession) {

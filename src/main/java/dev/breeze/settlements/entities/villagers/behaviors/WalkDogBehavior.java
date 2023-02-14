@@ -15,7 +15,7 @@ import net.minecraft.world.entity.npc.Villager;
 import javax.annotation.Nonnull;
 import java.util.Map;
 
-public class WalkDogBehavior extends BaseVillagerBehavior {
+public final class WalkDogBehavior extends BaseVillagerBehavior {
 
     private static final float SPEED_MODIFIER = 0.6F;
 

@@ -113,18 +113,16 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
     protected void tickExtra(ServerLevel level, Villager self, long gameTime) {
         self.setItemSlot(EquipmentSlot.MAINHAND, IRON_INGOT);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
+
+        if (this.targetGolem != null)
+            self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetGolem, true));
     }
 
     @Override
     protected void navigateToTarget(ServerLevel level, Villager self, long gameTime) {
-        // Safety check
         if (this.targetGolem == null)
             return;
-
-        // Walk to the target golem
-        self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetGolem, true));
         self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetGolem, 0.5F, 1));
-        self.getLookControl().setLookAt(this.targetGolem);
     }
 
     @Override

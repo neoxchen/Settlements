@@ -1,5 +1,6 @@
 package dev.breeze.settlements.entities.villagers.behaviors;
 
+import dev.breeze.settlements.utils.LogUtil;
 import lombok.Getter;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -88,6 +89,10 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
 
         this.interactCooldownTicks = interactCooldownTicks;
         this.interactRangeSquared = interactRangeSquared;
+        if (this.interactRangeSquared < 1.5) {
+            LogUtil.warning("%s's interact range squared (%.2f) is less than recommended value of 1.5", this.getClass().getSimpleName(),
+                    this.interactRangeSquared);
+        }
 
         this.maxNavigationIntervalTicks = maxNavigationIntervalTicks;
         this.maxInteractionIntervalTicks = maxInteractionIntervalTicks;

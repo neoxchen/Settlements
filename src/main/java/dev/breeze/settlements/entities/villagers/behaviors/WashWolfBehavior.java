@@ -49,7 +49,7 @@ public final class WashWolfBehavior extends InteractAtEntityBehavior {
                         // The villager should own a wolf
                         VillagerMemoryType.OWNED_DOG, MemoryStatus.VALUE_PRESENT
                 ), TimeUtil.minutes(1), Math.pow(20, 2),
-                TimeUtil.minutes(30), Math.pow(1, 2),
+                TimeUtil.minutes(30), Math.pow(1.5, 2),
                 5, 1,
                 TimeUtil.seconds(30), MAX_WASH_DURATION + MAX_DRY_DURATION);
 
@@ -85,23 +85,20 @@ public final class WashWolfBehavior extends InteractAtEntityBehavior {
             self.setItemSlot(EquipmentSlot.MAINHAND, SPONGE);
             self.setDropChance(EquipmentSlot.MAINHAND, 0f);
         }
+
+        if (this.targetWolf != null)
+            self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetWolf, true));
     }
 
     @Override
     protected void navigateToTarget(ServerLevel level, Villager self, long gameTime) {
-        // Safety check
         if (this.targetWolf == null)
             return;
-
-        // Walk to the target golem
-        self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetWolf, true));
         self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetWolf, 0.5F, 1));
-        self.getLookControl().setLookAt(this.targetWolf);
     }
 
     @Override
     protected void interactWithTarget(ServerLevel level, Villager self, long gameTime) {
-        // Safety check
         if (this.targetWolf == null)
             return;
 
