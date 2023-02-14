@@ -46,10 +46,10 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_19_R2.CraftWorld;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.Nonnull;
-import java.util.UUID;
 
 public class VillagerWolf extends Wolf {
 
@@ -90,10 +90,13 @@ public class VillagerWolf extends Wolf {
         // Configure pathfinder goals
         this.initGoals();
 
-        // Set wolf to be tamed by a random UID
-        this.setTame(true);
-        this.setOwnerUUID(UUID.randomUUID());
-        this.setCollarColor(DyeColor.LIME);
+        // If not "tamed" already
+        if (this.getOwnerUUID() == null) {
+            // Set wolf to be tamed by a "null" UID
+            this.setTame(true);
+            this.setOwnerUUID(null);
+            this.setCollarColor(DyeColor.WHITE);
+        }
 
         // Set step height to 1.5 (able to cross fences)
         this.maxUpStep = 1.5F;
@@ -269,6 +272,12 @@ public class VillagerWolf extends Wolf {
             return null;
 
         return villager;
+    }
+
+    public void tameByVillager(@Nonnull BaseVillager villager) {
+        this.setOwnerUUID(villager.getUUID());
+        this.setCollarColor(DyeColor.LIME);
+        this.heal(20F, EntityRegainHealthEvent.RegainReason.REGEN);
     }
 
     /*

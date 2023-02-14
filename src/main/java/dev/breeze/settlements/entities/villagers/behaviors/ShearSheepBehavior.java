@@ -94,11 +94,6 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void start(ServerLevel level, Villager self, long gameTime) {
-        // Do nothing
-    }
-
-    @Override
     protected void tickExtra(ServerLevel level, Villager self, long gameTime) {
         self.setItemSlot(EquipmentSlot.MAINHAND, SHEARS);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
@@ -135,6 +130,8 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
 
     @Override
     protected void stop(ServerLevel level, Villager self, long gameTime) {
+        super.stop(level, self, gameTime);
+
         // Reset held item
         self.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
 
@@ -142,10 +139,6 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
         self.getBrain().eraseMemory(MemoryModuleType.INTERACTION_TARGET);
 
         // Reset variables
-        this.ticksSpentNavigating = 0;
-        this.ticksSpentInteracting = 0;
-        this.cooldown = this.getInteractCooldownTicks();
-
         this.sheepSheared = 0;
         this.targetSheep = null;
     }

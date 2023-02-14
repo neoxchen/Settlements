@@ -7,12 +7,10 @@ import dev.breeze.settlements.utils.TimeUtil;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.Vec3;
-import org.bukkit.craftbukkit.v1_19_R2.inventory.CraftItemStack;
 import org.bukkit.util.Vector;
 
 import javax.annotation.Nonnull;
@@ -22,7 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-public class WolfFetchItemBehavior extends Behavior<Wolf> {
+public class WolfFetchItemBehavior extends BaseWolfBehavior {
 
     /**
      * What speed will the wolf move at when fetching
@@ -135,6 +133,8 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
 
     @Override
     protected void start(ServerLevel level, Wolf self, long gameTime) {
+        super.start(level, self, gameTime);
+
         this.status = FetchStatus.SEEKING;
         if (self instanceof VillagerWolf villagerWolf)
             villagerWolf.setStopFollowOwner(true);
@@ -173,7 +173,7 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
                 this.target.getBukkitEntity().setVelocity(new Vector(motion.x, motion.y, motion.z)); // use Bukkit for smooth item animation
 
                 // Give owner the item
-                owner.receiveItem(CraftItemStack.asBukkitCopy(this.target.getItem()));
+                owner.receiveItem(this.target);
                 self.playSound(SoundEvents.WOLF_AMBIENT, 0.15F, 1.3F);
 
                 // Stop behavior
@@ -185,6 +185,8 @@ public class WolfFetchItemBehavior extends Behavior<Wolf> {
 
     @Override
     protected void stop(ServerLevel level, Wolf self, long gameTime) {
+        super.stop(level, self, gameTime);
+
         this.cooldown = MAX_FETCH_COOLDOWN;
         this.status = FetchStatus.STAND_BY;
 

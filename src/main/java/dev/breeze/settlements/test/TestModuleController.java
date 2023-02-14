@@ -16,6 +16,7 @@ public class TestModuleController extends BaseModuleController {
         plugin.getCommand("test").setExecutor(new TestCommandHandler());
 
         pm.registerEvents(new TestGui(), plugin);
+        pm.registerEvents(new MemoryEvent(), plugin);
         return true;
     }
 

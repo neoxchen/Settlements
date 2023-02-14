@@ -2,11 +2,9 @@ package dev.breeze.settlements.entities.wolves.behaviors;
 
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.wolves.VillagerWolf;
-import dev.breeze.settlements.utils.MessageUtil;
 import dev.breeze.settlements.utils.RandomUtil;
 import dev.breeze.settlements.utils.TimeUtil;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.behavior.EntityTracker;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
@@ -15,7 +13,7 @@ import net.minecraft.world.entity.animal.Wolf;
 import javax.annotation.Nullable;
 import java.util.Map;
 
-public class WolfPlayWithEntityBehavior extends Behavior<Wolf> {
+public class WolfPlayWithEntityBehavior extends BaseWolfBehavior {
 
     /**
      * What speed will the wolf move at when playing
@@ -86,7 +84,7 @@ public class WolfPlayWithEntityBehavior extends Behavior<Wolf> {
 
     @Override
     protected void start(ServerLevel level, Wolf self, long gameTime) {
-        MessageUtil.broadcast("Playing started!");
+        super.start(level, self, gameTime);
     }
 
     @Override
@@ -115,7 +113,7 @@ public class WolfPlayWithEntityBehavior extends Behavior<Wolf> {
 
     @Override
     protected void stop(ServerLevel level, Wolf self, long gameTime) {
-        MessageUtil.broadcast("Playing stopped!");
+        super.stop(level, self, gameTime);
     }
 
     /**

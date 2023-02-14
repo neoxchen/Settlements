@@ -9,7 +9,6 @@ import dev.breeze.settlements.utils.TimeUtil;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
-import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.animal.Wolf;
@@ -21,7 +20,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
-public class WolfWalkBehavior extends Behavior<Wolf> {
+public class WolfWalkBehavior extends BaseWolfBehavior {
 
     private static final float WALK_SPEED_MODIFIER = 0.85F;
     private static final float NOTIFY_SPEED_MODIFIER = 1.1F;
@@ -40,7 +39,11 @@ public class WolfWalkBehavior extends Behavior<Wolf> {
      * Also used in WalkDogBehavior for villagers
      */
     public static final int MAX_WALK_DURATION = TimeUtil.seconds(45);
-    private static final int MAX_WALK_COOLDOWN = TimeUtil.seconds(20);
+    private static final int MAX_WALK_COOLDOWN = TimeUtil.minutes(20);
+    /**
+     * Initial cooldown is random between [0, MAX_WALK_INITIAL_COOLDOWN)
+     */
+    private static final int MAX_WALK_INITIAL_COOLDOWN = TimeUtil.minutes(1);
 
     /**
      * The probability of sniffing an entity (as opposed to sniffing a block) while taking a walk
@@ -62,7 +65,7 @@ public class WolfWalkBehavior extends Behavior<Wolf> {
                 // No preconditions
         ), MAX_WALK_DURATION);
 
-        this.cooldown = MAX_WALK_COOLDOWN;
+        this.cooldown = RandomUtil.RANDOM.nextInt(MAX_WALK_INITIAL_COOLDOWN);
 
         this.sniffDuration = 0;
         this.status = WalkStatus.STANDBY;
@@ -103,6 +106,8 @@ public class WolfWalkBehavior extends Behavior<Wolf> {
 
     @Override
     protected void start(ServerLevel level, Wolf self, long gameTime) {
+        super.start(level, self, gameTime);
+
         this.status = WalkStatus.NOTIFYING_OWNER;
         if (self instanceof VillagerWolf villagerWolf)
             villagerWolf.setStopFollowOwner(true);
@@ -135,7 +140,7 @@ public class WolfWalkBehavior extends Behavior<Wolf> {
         } else if (this.status == WalkStatus.SNIFFING && --this.sniffDuration > 0) {
             self.getNavigation().stop();
             if (this.target != null)
-                self.getLookControl().setLookAt(target.x, target.y, target.z);
+                self.getLookControl().setLookAt(this.target.x, this.target.y, this.target.z);
             return;
         }
 
@@ -149,6 +154,7 @@ public class WolfWalkBehavior extends Behavior<Wolf> {
                 // Navigate to the entity
                 self.getNavigation().moveTo(target, WALK_SPEED_MODIFIER);
                 self.getLookControl().setLookAt(target);
+                this.target = null;
             }
         }
 
@@ -170,8 +176,8 @@ public class WolfWalkBehavior extends Behavior<Wolf> {
             }
 
             // Navigate to the block
-            self.getNavigation().moveTo(target.x, target.y - 1, target.z, WALK_SPEED_MODIFIER);
-            self.getLookControl().setLookAt(target.x, target.y - 1, target.z);
+            self.getNavigation().moveTo(target.x, target.y, target.z, WALK_SPEED_MODIFIER);
+            this.target = new Vec3(target.x, target.y - 1, target.z);
         }
 
         this.status = WalkStatus.WALKING;
@@ -179,6 +185,8 @@ public class WolfWalkBehavior extends Behavior<Wolf> {
 
     @Override
     protected void stop(ServerLevel level, Wolf self, long gameTime) {
+        super.stop(level, self, gameTime);
+
         this.cooldown = MAX_WALK_COOLDOWN;
         this.sniffDuration = 0;
         this.status = WalkStatus.STANDBY;

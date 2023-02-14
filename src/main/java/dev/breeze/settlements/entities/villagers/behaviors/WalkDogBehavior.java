@@ -6,7 +6,6 @@ import dev.breeze.settlements.entities.wolves.behaviors.WolfWalkBehavior;
 import dev.breeze.settlements.utils.PacketUtil;
 import net.minecraft.network.protocol.game.ClientboundSetEntityLinkPacket;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
@@ -16,7 +15,7 @@ import net.minecraft.world.entity.npc.Villager;
 import javax.annotation.Nonnull;
 import java.util.Map;
 
-public class WalkDogBehavior extends Behavior<Villager> {
+public class WalkDogBehavior extends BaseVillagerBehavior {
 
     private static final float SPEED_MODIFIER = 0.6F;
 
@@ -24,6 +23,8 @@ public class WalkDogBehavior extends Behavior<Villager> {
 
     public WalkDogBehavior() {
         super(Map.of(
+                // The villager should own a wolf
+                VillagerMemoryType.OWNED_DOG, MemoryStatus.VALUE_PRESENT,
                 // A dog must be present to walk
                 VillagerMemoryType.WALK_DOG_TARGET, MemoryStatus.VALUE_PRESENT
         ), WolfWalkBehavior.MAX_WALK_DURATION);
@@ -41,6 +42,8 @@ public class WalkDogBehavior extends Behavior<Villager> {
 
     @Override
     protected void start(ServerLevel level, Villager self, long gameTime) {
+        super.start(level, self, gameTime);
+
         VillagerWolf wolf = self.getBrain().getMemory(VillagerMemoryType.WALK_DOG_TARGET).get();
         this.cachedWolf = wolf;
 
@@ -63,6 +66,8 @@ public class WalkDogBehavior extends Behavior<Villager> {
 
     @Override
     protected void stop(ServerLevel level, Villager self, long gameTime) {
+        super.stop(level, self, gameTime);
+
         if (this.cachedWolf != null) {
             // Detach leash
             ClientboundSetEntityLinkPacket packet = new ClientboundSetEntityLinkPacket(this.cachedWolf, null);

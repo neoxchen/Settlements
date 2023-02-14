@@ -33,9 +33,8 @@ public class TestCommandHandler implements CommandExecutor {
             if (block == null)
                 return true;
             BaseVillager villager = new BaseVillager(p.getWorld(), block.getLocation().add(0, 1, 0), VillagerType.PLAINS);
-
             VillagerWolf wolf = new VillagerWolf(p.getWorld(), block.getLocation().add(0, 1, 0));
-            wolf.setOwnerUUID(villager.getUUID());
+//            wolf.setOwnerUUID(villager.getUUID());
         } else {
             MessageUtil.sendMessage(p, "Invalid testing format!");
             return true;

@@ -1,5 +1,8 @@
 package dev.breeze.settlements.entities.villagers.behaviors;
 
+import dev.breeze.settlements.entities.villagers.BaseVillager;
+import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
+import dev.breeze.settlements.entities.wolves.VillagerWolf;
 import dev.breeze.settlements.utils.RandomUtil;
 import dev.breeze.settlements.utils.TimeUtil;
 import dev.breeze.settlements.utils.itemstack.ItemStackBuilder;
@@ -19,58 +22,40 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.craftbukkit.v1_19_R2.inventory.CraftItemStack;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class FeedWolfBehavior extends InteractAtEntityBehavior {
+public final class TameWolfBehavior extends InteractAtEntityBehavior {
+
+    private static final ItemStack BONE = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.BONE).build());
 
     /**
-     * Feedable by butchers level 2 or lower
-     * - i.e. novice or apprentice
+     * The chance of the villager taming a wolf
      */
-    private static final ItemStack[] FEEDABLE_ITEMS_RAW = new ItemStack[]{
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.CHICKEN).build()),
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.PORKCHOP).build()),
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.BEEF).build()),
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.RABBIT).build()),
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.MUTTON).build()),
-    };
-
-    /**
-     * Feedable by butchers level 3 or higher
-     * - i.e. journeyman, expert, or master
-     */
-    private static final ItemStack[] FEEDABLE_ITEMS_COOKED = new ItemStack[]{
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.COOKED_CHICKEN).build()),
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.COOKED_PORKCHOP).build()),
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.COOKED_BEEF).build()),
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.COOKED_RABBIT).build()),
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.COOKED_MUTTON).build()),
-    };
+    private static final double TAME_CHANCE = 0.3;
 
     @Nullable
     private Wolf targetWolf;
-    @Nullable
-    private ItemStack heldItem;
 
-    public FeedWolfBehavior() {
+    public TameWolfBehavior() {
         // Preconditions to this behavior
         super(Map.of(
                         // The villager should not be interacting with other targets
                         MemoryModuleType.INTERACTION_TARGET, MemoryStatus.VALUE_ABSENT,
+                        // The villager should not already have a wolf
+                        VillagerMemoryType.OWNED_DOG, MemoryStatus.VALUE_ABSENT,
                         // There should be living entities nearby
                         MemoryModuleType.NEAREST_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
-                ), TimeUtil.seconds(20), Math.pow(20, 2),
-                TimeUtil.minutes(1), Math.pow(1.5, 2),
-                5, 1,
-                TimeUtil.seconds(20), 1);
+                ), TimeUtil.minutes(1), Math.pow(20, 2),
+                TimeUtil.hours(1), Math.pow(1, 2),
+                5, TimeUtil.seconds(1),
+                TimeUtil.seconds(20), TimeUtil.seconds(10));
 
         this.targetWolf = null;
     }
@@ -84,11 +69,15 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
             return false;
 
         if (this.targetWolf == null) {
-            // Check for nearby iron golems
+            // Check for nearby untamed wolves
             List<LivingEntity> target = brain.getMemory(MemoryModuleType.NEAREST_LIVING_ENTITIES).get();
-            Optional<LivingEntity> nearestWolf = target.stream().filter(e -> e.getType() == EntityType.WOLF && this.canBeFed(((Wolf) e))).findFirst();
+            Optional<LivingEntity> nearestWolf = target.stream().filter(e -> {
+                if (e.getType() != EntityType.WOLF || !(e instanceof VillagerWolf villagerWolf))
+                    return false;
+                // Check if wolf is already owned by another villager
+                return villagerWolf.getOwner() == null;
+            }).findFirst();
 
-            // If no nearby iron golems, ignore
             if (nearestWolf.isEmpty())
                 return false;
 
@@ -102,24 +91,12 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
     protected boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime) {
         if (this.targetWolf == null || this.targetWolf.isDeadOrDying())
             return false;
-        return this.canBeFed(this.targetWolf);
-    }
-
-    @Override
-    protected void start(ServerLevel level, Villager self, long gameTime) {
-        super.start(level, self, gameTime);
-        if (self.getVillagerData().getLevel() < 3) {
-            this.heldItem = RandomUtil.choice(FEEDABLE_ITEMS_RAW);
-        } else {
-            this.heldItem = RandomUtil.choice(FEEDABLE_ITEMS_COOKED);
-        }
+        return this.targetWolf.getOwnerUUID() == null;
     }
 
     @Override
     protected void tickExtra(ServerLevel level, Villager self, long gameTime) {
-        if (this.heldItem == null)
-            return;
-        self.setItemSlot(EquipmentSlot.MAINHAND, this.heldItem);
+        self.setItemSlot(EquipmentSlot.MAINHAND, BONE);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
     }
 
@@ -131,7 +108,7 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
 
         // Walk to the target golem
         self.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(this.targetWolf, true));
-        self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetWolf, 0.5F, 1));
+        self.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(this.targetWolf, 0.6F, 1));
         self.getLookControl().setLookAt(this.targetWolf);
     }
 
@@ -141,15 +118,29 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
         if (this.targetWolf == null)
             return;
 
-        this.targetWolf.heal(this.heldItem.getItem().getFoodProperties().getNutrition(), EntityRegainHealthEvent.RegainReason.EATING);
+        // Attempt to tame the wolf
+        boolean successful = RandomUtil.RANDOM.nextDouble() < TAME_CHANCE;
 
-        // Display effects
-        Location location = new Location(level.getWorld(), this.targetWolf.getX(), this.targetWolf.getY() + 0.3, this.targetWolf.getZ());
-        ParticleUtil.itemBreak(location, CraftItemStack.asBukkitCopy(this.heldItem), 25, 0.2, 0.2, 0.2, 0.1);
-        SoundUtil.playSoundPublic(location, Sound.ENTITY_GENERIC_EAT, 1.2f);
+        // Play effect
+        Location villagerLoc = new Location(level.getWorld(), self.getX(), self.getY() + 1.8, self.getZ());
+        ParticleUtil.globalParticle(villagerLoc, successful ? Particle.VILLAGER_HAPPY : Particle.VILLAGER_ANGRY, 3, 0.2, 0.2, 0.2, 0.1);
+        SoundUtil.playSoundPublic(villagerLoc, successful ? Sound.ENTITY_VILLAGER_YES : Sound.ENTITY_VILLAGER_NO, 1.2f);
 
-        // Stop after feeding once
-        this.stop(level, self, gameTime);
+        Location wolfLoc = new Location(level.getWorld(), this.targetWolf.getX(), this.targetWolf.getEyeY(), this.targetWolf.getZ());
+        ParticleUtil.globalParticle(wolfLoc, successful ? Particle.HEART : Particle.SMOKE_NORMAL, successful ? 3 : 8, 0.2, 0.2, 0.2, 0);
+
+        // Successful taming logic
+        if (successful) {
+            // Set wolf's owner
+            if (this.targetWolf instanceof VillagerWolf villagerWolf && self instanceof BaseVillager baseVillager)
+                villagerWolf.tameByVillager(baseVillager);
+
+            // Set memory
+            self.getBrain().setMemory(VillagerMemoryType.OWNED_DOG, Optional.of(this.targetWolf.getUUID()));
+
+            // Stop after taming
+            this.stop(level, self, gameTime);
+        }
     }
 
     @Override
@@ -164,7 +155,6 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
 
         // Reset variables
         this.targetWolf = null;
-        this.heldItem = null;
     }
 
     @Override
@@ -175,10 +165,6 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
     @Override
     protected boolean isTargetReachable(Villager self) {
         return this.targetWolf != null && self.distanceToSqr(this.targetWolf) < this.getInteractRangeSquared();
-    }
-
-    private boolean canBeFed(@Nonnull Wolf wolf) {
-        return wolf.isTame() && wolf.getHealth() < wolf.getMaxHealth();
     }
 
 }

@@ -2,12 +2,11 @@ package dev.breeze.settlements.entities.wolves.behaviors;
 
 import dev.breeze.settlements.utils.MessageUtil;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.animal.Wolf;
 
 import java.util.HashMap;
 
-public class TestWolfBehavior extends Behavior<Wolf> {
+public class TestWolfBehavior extends BaseWolfBehavior {
 
     private int cooldown;
     private final String name;
@@ -40,17 +39,9 @@ public class TestWolfBehavior extends Behavior<Wolf> {
     }
 
     @Override
-    protected void start(ServerLevel level, Wolf self, long gameTime) {
-    }
-
-    @Override
     protected final void tick(ServerLevel level, Wolf self, long gameTime) {
         if (this.cooldown % 40 == 0)
             this.action("Performing action %s - %d", this.name, this.cooldown);
-    }
-
-    @Override
-    protected void stop(ServerLevel level, Wolf self, long gameTime) {
     }
 
     private void action(String format, Object... args) {

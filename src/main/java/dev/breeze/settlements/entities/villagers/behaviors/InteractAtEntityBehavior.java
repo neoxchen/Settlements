@@ -2,14 +2,13 @@ package dev.breeze.settlements.entities.villagers.behaviors;
 
 import lombok.Getter;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.npc.Villager;
 
 import java.util.Map;
 
-public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
+public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
 
     /**
      * The interval between searching nearby entities for the target
@@ -159,9 +158,6 @@ public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
     protected abstract boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime);
 
     @Override
-    protected abstract void start(ServerLevel level, Villager self, long gameTime);
-
-    @Override
     protected final void tick(ServerLevel level, Villager self, long gameTime) {
         // Interact with the target if we can reach it
         if (this.isTargetReachable(self)) {
@@ -211,7 +207,18 @@ public abstract class InteractAtEntityBehavior extends Behavior<Villager> {
     protected abstract void interactWithTarget(ServerLevel level, Villager self, long gameTime);
 
     @Override
-    protected abstract void stop(ServerLevel level, Villager self, long gameTime);
+    protected void stop(ServerLevel level, Villager self, long gameTime) {
+        super.stop(level, self, gameTime);
+
+        // Reset variables
+        this.cooldown = this.getInteractCooldownTicks();
+
+        this.navigationIntervalTicksLeft = 0;
+        this.ticksSpentNavigating = 0;
+
+        this.interactionIntervalTicksLeft = 0;
+        this.ticksSpentInteracting = 0;
+    }
 
     /**
      * Determines whether this behavior has a valid target or not

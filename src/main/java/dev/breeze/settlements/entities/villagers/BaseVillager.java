@@ -16,6 +16,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
+import net.minecraft.world.entity.ai.behavior.RunOne;
 import net.minecraft.world.entity.ai.behavior.VillagerGoalPackages;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
@@ -23,6 +24,7 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.*;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
@@ -96,7 +98,8 @@ public class BaseVillager extends Villager {
         super.load(nbt);
         LogUtil.info("Loading custom villager...");
 
-        // TODO: restore any NBT data if needed
+        // Load custom memories to brain
+        VillagerMemoryType.load(nbt, this);
     }
 
     @Override
@@ -115,15 +118,10 @@ public class BaseVillager extends Villager {
 
         // IMPORTANT: save as custom ID to persist this entity
         nbt.putString("id", "minecraft:" + ENTITY_TYPE);
+        nbt.putString("plugin", "Settlements");
 
-        // TODO: save any other important things
-        nbt.putString("Plugin", "Settlements");
-
-        CompoundTag villagerData = new CompoundTag();
-        villagerData.putString("test1", "answer1");
-        villagerData.putDouble("test2", 2);
-        villagerData.putBoolean("test3", true);
-        nbt.put("CustomVillagerData", villagerData);
+        // Save custom memories
+        VillagerMemoryType.save(nbt, this);
     }
 
 
@@ -141,6 +139,7 @@ public class BaseVillager extends Villager {
                     .addAll(DEFAULT_MEMORY_TYPES)
                     .add(VillagerMemoryType.FENCE_GATE_TO_CLOSE)
                     .add(VillagerMemoryType.WALK_DOG_TARGET)
+                    .add(VillagerMemoryType.OWNED_DOG)
                     .build();
 
             return Brain.provider(customMemoryTypes, DEFAULT_SENSOR_TYPES);
@@ -174,7 +173,7 @@ public class BaseVillager extends Villager {
         // Register idle activities
         brain.addActivity(Activity.IDLE, new ImmutableList.Builder<Pair<Integer, ? extends BehaviorControl<? super Villager>>>()
                 .addAll(VillagerGoalPackages.getIdlePackage(profession, 0.5F))
-                .addAll(this.getExtraIdleBehaviors())
+                .add(Pair.of(10, new RunOne<>(this.getExtraIdleBehaviors())))
                 .build());
 
         // Register work activities if not baby
@@ -185,7 +184,7 @@ public class BaseVillager extends Villager {
             brain.setSchedule(Schedule.VILLAGER_DEFAULT);
             brain.addActivityWithConditions(Activity.WORK, new ImmutableList.Builder<Pair<Integer, ? extends BehaviorControl<? super Villager>>>()
                             .addAll(VillagerGoalPackages.getWorkPackage(profession, 0.5F))
-                            .addAll(this.getExtraWorkBehaviors(profession))
+                            .add(Pair.of(10, new RunOne<>(this.getExtraWorkBehaviors(profession))))
                             .build(),
                     ImmutableSet.of(Pair.of(MemoryModuleType.JOB_SITE, MemoryStatus.VALUE_PRESENT)));
         }
@@ -193,7 +192,7 @@ public class BaseVillager extends Villager {
         // Register meet activities
         brain.addActivityWithConditions(Activity.MEET, new ImmutableList.Builder<Pair<Integer, ? extends BehaviorControl<? super Villager>>>()
                 .addAll(VillagerGoalPackages.getMeetPackage(profession, 0.5F))
-                .addAll(this.getExtraMeetBehaviors(profession))
+                .add(Pair.of(10, new RunOne<>(this.getExtraMeetBehaviors(profession))))
                 .build(), Set.of(Pair.of(MemoryModuleType.MEETING_POINT, MemoryStatus.VALUE_PRESENT)));
 
         // Register other activities
@@ -217,20 +216,22 @@ public class BaseVillager extends Villager {
         );
     }
 
-    public List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> getExtraIdleBehaviors() {
+    public List<Pair<? extends BehaviorControl<? super Villager>, Integer>> getExtraIdleBehaviors() {
         return List.of(
-                Pair.of(3, new WalkDogBehavior())
+                Pair.of(new TameWolfBehavior(), 1),
+                Pair.of(new WalkDogBehavior(), 1),
+                Pair.of(new WashWolfBehavior(), 1)
         );
     }
 
-    public List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> getExtraWorkBehaviors(VillagerProfession profession) {
-        List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> behaviors = new ArrayList<>();
+    public List<Pair<? extends BehaviorControl<? super Villager>, Integer>> getExtraWorkBehaviors(VillagerProfession profession) {
+        List<Pair<? extends BehaviorControl<? super Villager>, Integer>> behaviors = new ArrayList<>();
 
         // Assign extra work behaviors based on profession
         if (profession == VillagerProfession.NONE) {
             // Do nothing?
         } else if (profession == VillagerProfession.ARMORER) {
-            behaviors.add(Pair.of(10, new RepairIronGolemBehavior()));
+            behaviors.add(Pair.of(new RepairIronGolemBehavior(), 1));
         } else if (profession == VillagerProfession.BUTCHER) {
 
         } else if (profession == VillagerProfession.CARTOGRAPHER) {
@@ -252,20 +253,20 @@ public class BaseVillager extends Villager {
         } else if (profession == VillagerProfession.NITWIT) {
 
         } else if (profession == VillagerProfession.SHEPHERD) {
-            behaviors.add(Pair.of(10, new ShearSheepBehavior()));
+            behaviors.add(Pair.of(new ShearSheepBehavior(), 1));
         } else if (profession == VillagerProfession.TOOLSMITH) {
-            behaviors.add(Pair.of(10, new RepairIronGolemBehavior()));
+            behaviors.add(Pair.of(new RepairIronGolemBehavior(), 1));
         } else if (profession == VillagerProfession.WEAPONSMITH) {
-            behaviors.add(Pair.of(10, new RepairIronGolemBehavior()));
+            behaviors.add(Pair.of(new RepairIronGolemBehavior(), 1));
         }
 
         return behaviors;
     }
 
-    public List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> getExtraMeetBehaviors(VillagerProfession profession) {
-        List<Pair<Integer, ? extends BehaviorControl<? super Villager>>> behaviors = new ArrayList<>();
+    public List<Pair<? extends BehaviorControl<? super Villager>, Integer>> getExtraMeetBehaviors(VillagerProfession profession) {
+        List<Pair<? extends BehaviorControl<? super Villager>, Integer>> behaviors = new ArrayList<>();
         if (profession == VillagerProfession.BUTCHER) {
-            behaviors.add(Pair.of(4, new FeedWolfBehavior()));
+            behaviors.add(Pair.of(new FeedWolfBehavior(), 1));
         }
         return behaviors;
     }
@@ -401,13 +402,19 @@ public class BaseVillager extends Villager {
      */
 
     /**
-     * Receive an item from another entity or something???
+     * Receive an item from another entity
+     * - e.g. from a tamed wolf fetching an item
      *
-     * @return whether the receving is successful????
+     * @return whether the receiving is successful
      */
-    public boolean receiveItem(ItemStack item) {
-        MessageUtil.broadcast("&b[DEBUG] Villager received item " + item.getType() + "!");
-        return false;
+    public boolean receiveItem(@Nonnull ItemEntity item) {
+        if (!item.isAlive())
+            return false;
+
+        this.take(item, item.getItem().getCount());
+        item.remove(RemovalReason.KILLED);
+        MessageUtil.broadcast("&b[DEBUG] Villager received item " + item.getType() + " - " + item.getItem().getCount() + "!");
+        return true;
     }
 
     /*

@@ -134,6 +134,7 @@ public class EntityModuleController extends BaseModuleController {
         // Build & register memories
         VillagerMemoryType.FENCE_GATE_TO_CLOSE = registerMemory(VillagerMemoryType.REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
         VillagerMemoryType.WALK_DOG_TARGET = registerMemory(VillagerMemoryType.REGISTRY_KEY_WALK_DOG_TARGET, null);
+        VillagerMemoryType.OWNED_DOG = registerMemory(VillagerMemoryType.REGISTRY_KEY_OWNED_DOG, null);
 
         WolfMemoryType.NEARBY_ITEMS = registerMemory(WolfMemoryType.REGISTRY_KEY_NEARBY_ITEMS, null);
         WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_SNIFFABLE_ENTITIES, null);

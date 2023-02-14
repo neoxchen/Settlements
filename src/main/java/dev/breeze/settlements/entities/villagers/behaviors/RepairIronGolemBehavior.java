@@ -110,11 +110,6 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void start(ServerLevel level, Villager self, long gameTime) {
-        // TODO: do we need anything here?
-    }
-
-    @Override
     protected void tickExtra(ServerLevel level, Villager self, long gameTime) {
         self.setItemSlot(EquipmentSlot.MAINHAND, IRON_INGOT);
         self.setDropChance(EquipmentSlot.MAINHAND, 0f);
@@ -158,6 +153,8 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
 
     @Override
     protected void stop(ServerLevel level, Villager self, long gameTime) {
+        super.stop(level, self, gameTime);
+
         // Reset held item
         self.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
 
@@ -165,11 +162,6 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
         self.getBrain().eraseMemory(MemoryModuleType.INTERACTION_TARGET);
 
         // Reset variables
-        this.cooldown = this.getInteractCooldownTicks();
-
-        this.ticksSpentNavigating = 0;
-        this.ticksSpentInteracting = 0;
-
         this.targetGolem = null;
     }
 

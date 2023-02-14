@@ -6,6 +6,10 @@ public class TimeUtil {
     private static final int MINUTE_IN_TICKS = 60 * SECOND_IN_TICKS;
     private static final int HOUR_IN_TICKS = 60 * MINUTE_IN_TICKS;
 
+    public static int ticks(int ticks) {
+        return ticks;
+    }
+
     public static int seconds(int seconds) {
         return seconds * SECOND_IN_TICKS;
     }
