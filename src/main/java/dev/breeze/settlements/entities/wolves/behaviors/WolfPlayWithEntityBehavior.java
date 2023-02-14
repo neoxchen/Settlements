@@ -13,7 +13,7 @@ import net.minecraft.world.entity.animal.Wolf;
 import javax.annotation.Nullable;
 import java.util.Map;
 
-public class WolfPlayWithEntityBehavior extends BaseWolfBehavior {
+public final class WolfPlayWithEntityBehavior extends BaseWolfBehavior {
 
     /**
      * What speed will the wolf move at when playing

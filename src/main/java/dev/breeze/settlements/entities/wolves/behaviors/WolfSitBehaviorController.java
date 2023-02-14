@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.OneShot;
 import net.minecraft.world.entity.animal.Wolf;
 
-public class WolfSitBehaviorController {
+public final class WolfSitBehaviorController {
 
     private static final int DETECT_COOLDOWN = TimeUtil.seconds(10);
 

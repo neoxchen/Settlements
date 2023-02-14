@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-public class WolfFetchItemBehavior extends BaseWolfBehavior {
+public final class WolfFetchItemBehavior extends BaseWolfBehavior {
 
     /**
      * What speed will the wolf move at when fetching

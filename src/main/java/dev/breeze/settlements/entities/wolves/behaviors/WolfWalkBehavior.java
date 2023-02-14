@@ -20,7 +20,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
-public class WolfWalkBehavior extends BaseWolfBehavior {
+public final class WolfWalkBehavior extends BaseWolfBehavior {
 
     private static final float WALK_SPEED_MODIFIER = 0.85F;
     private static final float NOTIFY_SPEED_MODIFIER = 1.1F;

@@ -6,7 +6,7 @@ import net.minecraft.world.entity.animal.Wolf;
 
 import java.util.HashMap;
 
-public class TestWolfBehavior extends BaseWolfBehavior {
+public final class TestWolfBehavior extends BaseWolfBehavior {
 
     private int cooldown;
     private final String name;
