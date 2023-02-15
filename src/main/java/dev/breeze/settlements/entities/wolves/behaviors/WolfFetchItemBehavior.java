@@ -73,7 +73,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
     }
 
     @Override
-    protected final boolean checkExtraStartConditions(@Nonnull ServerLevel level, @Nonnull Wolf self) {
+    protected boolean checkExtraStartConditions(@Nonnull ServerLevel level, @Nonnull Wolf self) {
         if (--this.cooldown > 0)
             return false;
 
@@ -112,7 +112,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
     }
 
     @Override
-    protected final boolean canStillUse(ServerLevel level, Wolf self, long gameTime) {
+    protected boolean canStillUse(ServerLevel level, Wolf self, long gameTime) {
         // Check time limit
         if (this.cooldown < -MAX_FETCH_DURATION)
             return false;
@@ -125,10 +125,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
             return false;
 
         // Check if we've somehow dropped the item on the way back
-        if (this.status == FetchStatus.RETURNING && !this.target.isPassenger())
-            return false;
-
-        return true;
+        return this.status != FetchStatus.RETURNING || this.target.isPassenger();
     }
 
     @Override
@@ -136,12 +133,15 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
         super.start(level, self, gameTime);
 
         this.status = FetchStatus.SEEKING;
-        if (self instanceof VillagerWolf villagerWolf)
+        if (self instanceof VillagerWolf villagerWolf) {
             villagerWolf.setStopFollowOwner(true);
+            villagerWolf.setLookLocked(true);
+            villagerWolf.setMovementLocked(true);
+        }
     }
 
     @Override
-    protected final void tick(ServerLevel level, Wolf self, long gameTime) {
+    protected void tick(ServerLevel level, Wolf self, long gameTime) {
         BaseVillager owner = this.getOwner(self);
 
         // Safety null check
@@ -190,8 +190,11 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
         this.cooldown = MAX_FETCH_COOLDOWN;
         this.status = FetchStatus.STAND_BY;
 
-        if (self instanceof VillagerWolf villagerWolf)
+        if (self instanceof VillagerWolf villagerWolf) {
             villagerWolf.setStopFollowOwner(false);
+            villagerWolf.setLookLocked(false);
+            villagerWolf.setMovementLocked(false);
+        }
 
         // Drop off the carried item at current position
         // - delivery not successful
@@ -231,7 +234,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
         /**
          * Returning to owner after picking up the item
          */
-        RETURNING;
+        RETURNING
     }
 
 }

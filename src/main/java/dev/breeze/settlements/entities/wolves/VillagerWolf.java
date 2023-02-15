@@ -10,6 +10,8 @@ import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfSitBehaviorController;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfWalkBehavior;
 import dev.breeze.settlements.entities.wolves.goals.WolfFollowOwnerGoal;
+import dev.breeze.settlements.entities.wolves.goals.WolfLookLockGoal;
+import dev.breeze.settlements.entities.wolves.goals.WolfMovementLockGoal;
 import dev.breeze.settlements.entities.wolves.goals.WolfSitWhenOrderedToGoal;
 import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
 import dev.breeze.settlements.entities.wolves.sensors.WolfSensorType;
@@ -67,6 +69,13 @@ public class VillagerWolf extends Wolf {
     @Setter
     private boolean stopFollowOwner;
 
+    @Getter
+    @Setter
+    private boolean lookLocked;
+    @Getter
+    @Setter
+    private boolean movementLocked;
+
     /**
      * Constructor called when Minecraft tries to load the entity
      */
@@ -107,6 +116,8 @@ public class VillagerWolf extends Wolf {
         this.maxUpStep = 1.5F;
 
         this.stopFollowOwner = false;
+        this.lookLocked = false;
+        this.movementLocked = false;
     }
 
     /**
@@ -151,7 +162,10 @@ public class VillagerWolf extends Wolf {
         this.goalSelector.addGoal(2, new WolfSitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(6, new WolfFollowOwnerGoal(this, 1.0D, 10.0F, 2.0F, false));
 
-        // TODO: Add extra goals
+        // Add look-lock goal (prevent wolf from looking away in other goals)
+        this.goalSelector.addGoal(1, new WolfLookLockGoal(this));
+        // Add movement-lock goal (prevent wolf from moving in other goals)
+        this.goalSelector.addGoal(1, new WolfMovementLockGoal(this));
 
         // Add target
 //        this.targetSelector.addGoal(GOAL_PRIORITY, new HurtByTargetGoal(this, Villager.class).setAlertOthers(VillagerWolf.class));

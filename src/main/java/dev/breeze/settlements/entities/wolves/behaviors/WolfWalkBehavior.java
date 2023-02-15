@@ -109,8 +109,11 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
         super.start(level, self, gameTime);
 
         this.status = WalkStatus.NOTIFYING_OWNER;
-        if (self instanceof VillagerWolf villagerWolf)
+        if (self instanceof VillagerWolf villagerWolf) {
             villagerWolf.setStopFollowOwner(true);
+            villagerWolf.setLookLocked(true);
+            villagerWolf.setMovementLocked(true);
+        }
     }
 
     @Override
@@ -193,6 +196,8 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
 
         if (self instanceof VillagerWolf villagerWolf) {
             villagerWolf.setStopFollowOwner(false);
+            villagerWolf.setLookLocked(false);
+            villagerWolf.setMovementLocked(false);
 
             if (villagerWolf.getOwner() != null)
                 villagerWolf.getOwner().getBrain().eraseMemory(VillagerMemoryType.WALK_DOG_TARGET);
@@ -243,7 +248,7 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
         /**
          * Stopping to sniff something
          */
-        SNIFFING,
+        SNIFFING
     }
 
 }
