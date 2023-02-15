@@ -14,7 +14,10 @@ import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -32,18 +35,8 @@ public class WolfSniffableEntitiesSensor extends Sensor<Wolf> {
      */
     private static final int SENSE_COOLDOWN = TimeUtil.seconds(7);
 
-    /**
-     * Actual cooldown: SNIFF_COOLDOWN * SENSE_COOLDOWN
-     * - since doTick is called every SENSE_COOLDOWN seconds
-     * - and cooldown is decremented every time doTick is called
-     */
-    private static final int SNIFF_COOLDOWN = 10;
-
-    private final Map<UUID, Integer> sniffCooldownMap;
-
     public WolfSniffableEntitiesSensor() {
         super(SENSE_COOLDOWN);
-        this.sniffCooldownMap = new HashMap<>();
     }
 
     @Override
@@ -65,12 +58,12 @@ public class WolfSniffableEntitiesSensor extends Sensor<Wolf> {
             // Check minimum distance
             if (nearby.distanceToSqr(self) < MIN_DISTANCE_SQUARED)
                 return false;
+
             // Check if we've sniffed it before
-            UUID uuid = nearby.getUUID();
-            if (this.sniffCooldownMap.containsKey(uuid))
-                return false;
-            this.sniffCooldownMap.put(uuid, SNIFF_COOLDOWN);
-            return true;
+            if (!brain.hasMemoryValue(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES))
+                return true;
+            Set<LivingEntity> recentlySniffed = brain.getMemory(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES).get();
+            return !recentlySniffed.contains(nearby);
         };
 
         // Create result list
@@ -86,31 +79,12 @@ public class WolfSniffableEntitiesSensor extends Sensor<Wolf> {
             brain.eraseMemory(WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES);
         else
             brain.setMemory(WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES, Optional.of(sniffable));
-
-        // Clean up map
-        this.updateCooldowns();
     }
 
     @Override
     @Nonnull
     public Set<MemoryModuleType<?>> requires() {
         return Set.of(WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES);
-    }
-
-    /**
-     * Updates the cooldown map by subtracting 1 in all cooldowns
-     * - entry is removed if the cooldown is <= 0
-     */
-    private void updateCooldowns() {
-        Iterator<Map.Entry<UUID, Integer>> iterator = this.sniffCooldownMap.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<UUID, Integer> current = iterator.next();
-            int newCooldown = current.getValue() - 1;
-            if (newCooldown <= 0)
-                iterator.remove();
-            else
-                this.sniffCooldownMap.put(current.getKey(), newCooldown);
-        }
     }
 
 }

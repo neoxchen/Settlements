@@ -189,6 +189,7 @@ public class VillagerWolf extends Wolf {
         ImmutableList<MemoryModuleType<?>> memoryTypes = new ImmutableList.Builder<MemoryModuleType<?>>()
                 .add(WolfMemoryType.NEARBY_ITEMS)
                 .add(WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES)
+                .add(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES)
                 .build();
         ImmutableList<SensorType<? extends Sensor<Wolf>>> sensorTypes = new ImmutableList.Builder<SensorType<? extends Sensor<Wolf>>>()
                 .add(WolfSensorType.NEARBY_ITEMS)

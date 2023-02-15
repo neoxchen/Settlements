@@ -138,6 +138,7 @@ public class EntityModuleController extends BaseModuleController {
 
         WolfMemoryType.NEARBY_ITEMS = registerMemory(WolfMemoryType.REGISTRY_KEY_NEARBY_ITEMS, null);
         WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_SNIFFABLE_ENTITIES, null);
+        WolfMemoryType.RECENTLY_SNIFFED_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_RECENTLY_SNIFFED_ENTITIES, null);
 
         // Re-freeze registry
         LogUtil.info("Re-freezing memory module type registry...");

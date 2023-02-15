@@ -6,6 +6,8 @@ import dev.breeze.settlements.entities.wolves.VillagerWolf;
 import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
 import dev.breeze.settlements.utils.RandomUtil;
 import dev.breeze.settlements.utils.TimeUtil;
+import dev.breeze.settlements.utils.particle.ParticleUtil;
+import dev.breeze.settlements.utils.sound.SoundUtil;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
@@ -14,15 +16,19 @@ import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.phys.Vec3;
+import org.bukkit.Location;
+import org.bukkit.Sound;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class WolfWalkBehavior extends BaseWolfBehavior {
 
-    private static final float WALK_SPEED_MODIFIER = 0.85F;
+    private static final float WALK_SPEED_MODIFIER = 0.9F;
     private static final float NOTIFY_SPEED_MODIFIER = 1.1F;
 
     // The maximum range that the wolf can pick a new target to walk to in blocks
@@ -38,7 +44,7 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
     /**
      * Also used in WalkDogBehavior for villagers
      */
-    public static final int MAX_WALK_DURATION = TimeUtil.seconds(45);
+    public static final int MAX_WALK_DURATION = TimeUtil.minutes(1);
     private static final int MAX_WALK_COOLDOWN = TimeUtil.minutes(20);
     /**
      * Initial cooldown is random between [0, MAX_WALK_INITIAL_COOLDOWN)
@@ -50,6 +56,12 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
      */
     private static final double SNIFF_ENTITY_PROBABILITY = 0.7;
 
+    /**
+     * The probability of digging instead of sniffing something
+     * - note: digging can only occur if the wolf is sniffing a block
+     */
+    private static final double DIG_PROBABILITY = 0.15;
+
     private static final int SNIFF_MIN_DURATION = TimeUtil.seconds(2);
     private static final int SNIFF_MAX_DURATION = TimeUtil.seconds(5);
 
@@ -59,6 +71,10 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
 
     @Nullable
     private Vec3 target;
+    @Nullable
+    private LivingEntity targetEntity;
+
+    private boolean isDigging;
 
     public WolfWalkBehavior() {
         super(Map.of(
@@ -71,10 +87,13 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
         this.status = WalkStatus.STANDBY;
 
         this.target = null;
+        this.targetEntity = null;
+
+        this.isDigging = false;
     }
 
     @Override
-    protected final boolean checkExtraStartConditions(@Nonnull ServerLevel level, @Nonnull Wolf wolf) {
+    protected boolean checkExtraStartConditions(@Nonnull ServerLevel level, @Nonnull Wolf wolf) {
         if (--this.cooldown > 0)
             return false;
 
@@ -90,14 +109,11 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
         if (self.isOrderedToSit())
             return false;
 
-        if (self.getBrain().getSchedule().getActivityAt((int) level.getWorld().getTime()) != Activity.PLAY)
-            return false;
-
-        return true;
+        return self.getBrain().getSchedule().getActivityAt((int) level.getWorld().getTime()) == Activity.PLAY;
     }
 
     @Override
-    protected final boolean canStillUse(ServerLevel level, Wolf self, long gameTime) {
+    protected boolean canStillUse(@Nonnull ServerLevel level, @Nonnull Wolf self, long gameTime) {
         // Check time limit
         if (this.cooldown < -MAX_WALK_DURATION)
             return false;
@@ -105,7 +121,7 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
     }
 
     @Override
-    protected void start(ServerLevel level, Wolf self, long gameTime) {
+    protected void start(@Nonnull ServerLevel level, @Nonnull Wolf self, long gameTime) {
         super.start(level, self, gameTime);
 
         this.status = WalkStatus.NOTIFYING_OWNER;
@@ -117,7 +133,7 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
     }
 
     @Override
-    protected final void tick(ServerLevel level, Wolf wolf, long gameTime) {
+    protected void tick(@Nonnull ServerLevel level, @Nonnull Wolf wolf, long gameTime) {
         if (!(wolf instanceof VillagerWolf self))
             return;
 
@@ -139,13 +155,37 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
             // Navigation is done, change state to sniffing
             this.status = WalkStatus.SNIFFING;
             this.sniffDuration = RandomUtil.RANDOM.nextInt(SNIFF_MIN_DURATION, SNIFF_MAX_DURATION);
+
+            // Randomly digs if we are sniffing a block
+            if (this.target != null && this.targetEntity == null) {
+                this.isDigging = RandomUtil.RANDOM.nextDouble() < DIG_PROBABILITY;
+            }
+
             return;
         } else if (this.status == WalkStatus.SNIFFING && --this.sniffDuration > 0) {
-            self.getNavigation().stop();
-            if (this.target != null)
+            if (this.target != null) {
                 self.getLookControl().setLookAt(this.target.x, this.target.y, this.target.z);
+                self.getNavigation().stop();
+            } else if (this.targetEntity != null) {
+                self.getLookControl().setLookAt(this.targetEntity);
+
+                // Follow the entity
+                if (self.getNavigation().isDone())
+                    self.getNavigation().moveTo(this.targetEntity, WALK_SPEED_MODIFIER);
+            }
+
+            // Spawn dig effects if isDigging
+            if (this.isDigging && this.sniffDuration % 5 == 0) {
+                Location location = new Location(self.level.getWorld(), self.getX(), self.getY(), self.getZ());
+                ParticleUtil.blockBreak(location, location.clone().add(0, -1, 0).getBlock().getType(), 5, 0.4, 0.3, 0.4, 0.1);
+                SoundUtil.playSoundPublic(location, Sound.BLOCK_SAND_HIT, 0.2F, 1.4F);
+            }
+
             return;
         }
+
+        // Reset isDigging
+        this.isDigging = false;
 
         // Current path is done, randomize another target
         boolean sniffTargetFound = false;
@@ -157,7 +197,17 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
                 // Navigate to the entity
                 self.getNavigation().moveTo(target, WALK_SPEED_MODIFIER);
                 self.getLookControl().setLookAt(target);
+
+                // Set entity to recently sniffed
+                if (!self.getBrain().hasMemoryValue(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES)) {
+                    self.getBrain().setMemory(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES, new HashSet<>(Set.of(target)));
+                } else {
+                    self.getBrain().getMemory(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES).get().add(target);
+                }
+
+                // Set cache variables
                 this.target = null;
+                this.targetEntity = target;
             }
         }
 
@@ -180,14 +230,17 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
 
             // Navigate to the block
             self.getNavigation().moveTo(target.x, target.y, target.z, WALK_SPEED_MODIFIER);
+
+            // Set cache variables
             this.target = new Vec3(target.x, target.y - 1, target.z);
+            this.targetEntity = null;
         }
 
         this.status = WalkStatus.WALKING;
     }
 
     @Override
-    protected void stop(ServerLevel level, Wolf self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Wolf self, long gameTime) {
         super.stop(level, self, gameTime);
 
         this.cooldown = MAX_WALK_COOLDOWN;
@@ -201,6 +254,9 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
 
             if (villagerWolf.getOwner() != null)
                 villagerWolf.getOwner().getBrain().eraseMemory(VillagerMemoryType.WALK_DOG_TARGET);
+
+            // Remove all entities recently sniffed
+            villagerWolf.getBrain().eraseMemory(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES);
         }
     }
 
@@ -226,7 +282,14 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
         if (sniffable.isEmpty())
             return null;
 
-        return sniffable.get(0);
+        // If we haven't sniffed any entities recently, return first
+        if (!brain.hasMemoryValue(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES)) {
+            return sniffable.get(0);
+        }
+
+        // Otherwise, don't sniff entities that are recently sniffed
+        Set<LivingEntity> recentlySniffed = brain.getMemory(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES).get();
+        return sniffable.stream().filter(nearby -> !recentlySniffed.contains(nearby)).findFirst().orElse(null);
     }
 
     private enum WalkStatus {
@@ -246,7 +309,7 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
         WALKING,
 
         /**
-         * Stopping to sniff something
+         * Stopping to sniff or dig something
          */
         SNIFFING
     }
