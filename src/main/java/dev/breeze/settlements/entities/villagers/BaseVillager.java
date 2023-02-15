@@ -273,9 +273,17 @@ public class BaseVillager extends Villager {
 
     public List<Pair<? extends BehaviorControl<? super Villager>, Integer>> getExtraMeetBehaviors(VillagerProfession profession) {
         List<Pair<? extends BehaviorControl<? super Villager>, Integer>> behaviors = new ArrayList<>();
+
+        // Feed wolf behavior
         if (profession == VillagerProfession.BUTCHER) {
             behaviors.add(Pair.of(new FeedWolfBehavior(), 1));
         }
+
+        // Tame wolf behavior
+        if (profession == VillagerProfession.SHEPHERD || profession == VillagerProfession.FARMER || profession == VillagerProfession.BUTCHER) {
+            behaviors.add(Pair.of(new TameWolfBehavior(), 1));
+        }
+
         return behaviors;
     }
 
@@ -421,7 +429,7 @@ public class BaseVillager extends Villager {
 
         this.take(item, item.getItem().getCount());
         item.remove(RemovalReason.KILLED);
-        MessageUtil.broadcast("&b[DEBUG] Villager received item " + item.getType() + " - " + item.getItem().getCount() + "!");
+        MessageUtil.broadcast("&b[DEBUG] Villager received item " + item.getItem() + " - " + item.getItem().getCount() + "!");
         return true;
     }
 

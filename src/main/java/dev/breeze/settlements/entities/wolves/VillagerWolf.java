@@ -15,11 +15,15 @@ import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
 import dev.breeze.settlements.entities.wolves.sensors.WolfSensorType;
 import dev.breeze.settlements.utils.LogUtil;
 import dev.breeze.settlements.utils.TimeUtil;
+import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
+import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -37,18 +41,20 @@ import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.schedule.Schedule;
 import net.minecraft.world.entity.schedule.ScheduleBuilder;
 import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.level.pathfinder.Node;
 import net.minecraft.world.level.pathfinder.PathFinder;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_19_R2.CraftWorld;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
-import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 public class VillagerWolf extends Wolf {
 
@@ -65,7 +71,7 @@ public class VillagerWolf extends Wolf {
      * Constructor called when Minecraft tries to load the entity
      */
     public VillagerWolf(@Nonnull EntityType<? extends Wolf> entityType, @Nonnull Level level) {
-        super(EntityType.WOLF, level); // TODO
+        super(EntityType.WOLF, level);
         this.init();
     }
 
@@ -84,7 +90,7 @@ public class VillagerWolf extends Wolf {
 
     private void init() {
         // TODO: improve navigation to ignore fences
-//        this.navigation = new WolfNavigation(this, this.level);
+        this.navigation = new WolfNavigation(this, this.level);
 
         // Configure pathfinder goals
         this.initGoals();
@@ -113,7 +119,7 @@ public class VillagerWolf extends Wolf {
     }
 
     @Override
-    public void load(CompoundTag nbt) {
+    public void load(@Nonnull CompoundTag nbt) {
         super.load(nbt);
         LogUtil.info("Loading custom wolf...");
 
@@ -121,7 +127,7 @@ public class VillagerWolf extends Wolf {
     }
 
     @Override
-    public boolean save(CompoundTag nbt) {
+    public boolean save(@Nonnull CompoundTag nbt) {
         LogUtil.info("Saving custom wolf");
         return super.save(nbt);
     }
@@ -130,20 +136,12 @@ public class VillagerWolf extends Wolf {
      * Saves villager data to the NBT tag
      */
     @Override
-    public void addAdditionalSaveData(CompoundTag nbt) {
+    public void addAdditionalSaveData(@Nonnull CompoundTag nbt) {
         super.addAdditionalSaveData(nbt);
 
         // IMPORTANT: save as custom ID to persist this entity
         nbt.putString("id", "minecraft:" + ENTITY_TYPE);
-
-        // TODO: save any other important things
         nbt.putString("Plugin", "Settlements");
-
-        CompoundTag villagerData = new CompoundTag();
-        villagerData.putString("test1", "answer1");
-        villagerData.putDouble("test2", 2);
-        villagerData.putBoolean("test3", true);
-        nbt.put("CustomVillagerData", villagerData);
     }
 
     private void initGoals() {
@@ -280,7 +278,7 @@ public class VillagerWolf extends Wolf {
     }
 
     /*
-     * Custom navigation for wolves to ignore fence gate
+     * Custom navigation for wolves to step over fences
      */
     private static class WolfNavigation extends GroundPathNavigation {
 
@@ -289,18 +287,205 @@ public class VillagerWolf extends Wolf {
         }
 
         @Override
+        @Nonnull
         protected PathFinder createPathFinder(int range) {
             this.nodeEvaluator = new WolfNodeEvaluator();
-            this.nodeEvaluator.setCanPassDoors(true);
             return new PathFinder(this.nodeEvaluator, range);
         }
+
     }
 
     private static class WolfNodeEvaluator extends WalkNodeEvaluator {
+
+        // Copied from parent because it's private
+        private final Object2BooleanMap<AABB> collisionCache = new Object2BooleanOpenHashMap<>();
+
         @Override
-        protected BlockPathTypes evaluateBlockPathType(BlockGetter world, boolean canOpenDoors, boolean canEnterOpenDoors, BlockPos pos, BlockPathTypes type) {
-            return type == BlockPathTypes.FENCE ? BlockPathTypes.OPEN : super.evaluateBlockPathType(world, canOpenDoors, canEnterOpenDoors, pos, type);
+        public void done() {
+            this.collisionCache.clear();
+            super.done();
         }
+
+//        @Override
+//        protected boolean isNeighborValid(@Nullable Node neighbor, @Nonnull Node origin) {
+//            // Get super's answer first
+//            boolean isValid = super.isNeighborValid(neighbor, origin);
+//
+//            // Check if node is null or closed (previously visited)
+//            if (neighbor == null || neighbor.closed)
+//                return false;
+//
+//            BlockPathTypes blockPathTypes = this.getCachedBlockType(this.mob, origin.x, origin.y, origin.z);
+//            if (blockPathTypes != BlockPathTypes.FENCE)
+//                return isValid;
+//
+//            highlight(level.getWorldBorder().world, origin.asBlockPos(), Particle.END_ROD);
+//            return true;
+//        }
+
+        /**
+         * Mostly copied over from the parent class
+         * - with some minor refactoring
+         * - and one additional block to allow "passage" through fence gates
+         */
+        @Override
+        @Nullable
+        protected Node findAcceptedNode(int x, int y, int z, int maxYStep, double prevFeetY, Direction direction, BlockPathTypes prevNodeType) {
+            Node node = null;
+            BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
+            double d = this.getFloorLevel(mutableBlockPos.set(x, y, z));
+            if (d - prevFeetY > this.getMobJumpHeight()) {
+                return null;
+            }
+            BlockPathTypes currNodeType = this.getCachedBlockType(this.mob, x, y, z);
+            float penalty = this.mob.getPathfindingMalus(currNodeType);
+            double e = (double) this.mob.getBbWidth() / 2.0D;
+            if (penalty >= 0.0F) {
+                node = this.getNodeAndUpdateCostToMax(x, y, z, currNodeType, penalty);
+            }
+
+            if (doesBlockHavePartialCollision(prevNodeType) && node != null && node.costMalus >= 0.0F && !this.canReachWithoutCollision(node)) {
+                node = null;
+            }
+
+            if (currNodeType != BlockPathTypes.WALKABLE && (!this.isAmphibious() || currNodeType != BlockPathTypes.WATER)) {
+                if ((node == null || node.costMalus < 0.0F) && maxYStep > 0 && (currNodeType != BlockPathTypes.FENCE || this.canWalkOverFences()) && currNodeType != BlockPathTypes.UNPASSABLE_RAIL && currNodeType != BlockPathTypes.TRAPDOOR && currNodeType != BlockPathTypes.POWDER_SNOW) {
+                    node = this.findAcceptedNode(x, y + 1, z, maxYStep - 1, prevFeetY, direction, prevNodeType);
+                    if (node != null && (node.type == BlockPathTypes.OPEN || node.type == BlockPathTypes.WALKABLE) && this.mob.getBbWidth() < 1.0F) {
+                        double g = (double) (x - direction.getStepX()) + 0.5D;
+                        double h = (double) (z - direction.getStepZ()) + 0.5D;
+                        AABB aABB = new AABB(g - e, this.getFloorLevel(mutableBlockPos.set(g, y + 1, h)) + 0.001D, h - e, g + e,
+                                (double) this.mob.getBbHeight() + this.getFloorLevel(mutableBlockPos.set(node.x, node.y, node.z)) - 0.002D, h + e);
+                        if (this.hasCollisions(aABB)) {
+                            node = null;
+                        }
+                    }
+                }
+
+                if (!this.isAmphibious() && currNodeType == BlockPathTypes.WATER && !this.canFloat()) {
+                    if (this.getCachedBlockType(this.mob, x, y - 1, z) != BlockPathTypes.WATER) {
+                        return node;
+                    }
+
+                    while (y > this.mob.level.getMinBuildHeight()) {
+                        --y;
+                        currNodeType = this.getCachedBlockType(this.mob, x, y, z);
+                        if (currNodeType != BlockPathTypes.WATER) {
+                            return node;
+                        }
+
+                        node = this.getNodeAndUpdateCostToMax(x, y, z, currNodeType, this.mob.getPathfindingMalus(currNodeType));
+                    }
+                }
+
+                if (currNodeType == BlockPathTypes.OPEN) {
+                    int i = 0;
+                    int j = y;
+
+                    while (currNodeType == BlockPathTypes.OPEN) {
+                        --y;
+                        if (y < this.mob.level.getMinBuildHeight()) {
+                            return this.getBlockedNode(x, j, z);
+                        }
+
+                        if (i++ >= this.mob.getMaxFallDistance()) {
+                            return this.getBlockedNode(x, y, z);
+                        }
+
+                        currNodeType = this.getCachedBlockType(this.mob, x, y, z);
+                        penalty = this.mob.getPathfindingMalus(currNodeType);
+                        if (currNodeType != BlockPathTypes.OPEN && penalty >= 0.0F) {
+                            node = this.getNodeAndUpdateCostToMax(x, y, z, currNodeType, penalty);
+                            break;
+                        }
+
+                        if (penalty < 0.0F) {
+                            return this.getBlockedNode(x, y, z);
+                        }
+                    }
+                }
+
+                // >> Custom code 2 begin -- recognize fence gate as "walkable into"
+                // - aka allows the villager to pathfind through fence gate blocks
+                if (node == null && currNodeType == BlockPathTypes.FENCE) {
+                    node = this.getNode(x, y + 1, z);
+                    node.type = BlockPathTypes.FENCE;
+                    node.costMalus = 2;
+                }
+                // << Custom code 2 ends
+
+                if (doesBlockHavePartialCollision(currNodeType) && node == null) {
+                    node = this.getNode(x, y, z);
+                    node.closed = true;
+                    node.type = currNodeType;
+                    node.costMalus = currNodeType.getMalus();
+                }
+
+            }
+            return node;
+        }
+
+        /**
+         * Copied from the parent class
+         */
+        private double getMobJumpHeight() {
+            return Math.max(1.125D, this.mob.maxUpStep);
+        }
+
+        /**
+         * Copied from the parent class
+         */
+        private Node getNodeAndUpdateCostToMax(int x, int y, int z, BlockPathTypes type, float penalty) {
+            Node node = this.getNode(x, y, z);
+            node.type = type;
+            node.costMalus = Math.max(node.costMalus, penalty);
+            return node;
+        }
+
+        /**
+         * Copied from the parent class
+         */
+        private static boolean doesBlockHavePartialCollision(BlockPathTypes nodeType) {
+            return nodeType == BlockPathTypes.FENCE || nodeType == BlockPathTypes.DOOR_WOOD_CLOSED || nodeType == BlockPathTypes.DOOR_IRON_CLOSED;
+        }
+
+        /**
+         * Copied from the parent class
+         */
+        private boolean canReachWithoutCollision(Node node) {
+            AABB aABB = this.mob.getBoundingBox();
+            Vec3 vec3 = new Vec3((double) node.x - this.mob.getX() + aABB.getXsize() / 2.0D,
+                    (double) node.y - this.mob.getY() + aABB.getYsize() / 2.0D,
+                    (double) node.z - this.mob.getZ() + aABB.getZsize() / 2.0D);
+            int i = Mth.ceil(vec3.length() / aABB.getSize());
+            vec3 = vec3.scale(1.0F / (float) i);
+
+            for (int j = 1; j <= i; ++j) {
+                aABB = aABB.move(vec3);
+                if (this.hasCollisions(aABB)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Copied from the parent class
+         */
+        private boolean hasCollisions(AABB box) {
+            return this.collisionCache.computeIfAbsent(box, (box2) -> !this.level.noCollision(this.mob, box));
+        }
+
+        /**
+         * Copied from the parent class
+         */
+        private Node getBlockedNode(int x, int y, int z) {
+            Node node = this.getNode(x, y, z);
+            node.type = BlockPathTypes.BLOCKED;
+            node.costMalus = -1.0F;
+            return node;
+        }
+
     }
 
 }
