@@ -23,6 +23,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.craftbukkit.v1_19_R2.inventory.CraftItemStack;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
@@ -49,7 +50,7 @@ public final class WashWolfBehavior extends InteractAtEntityBehavior {
                         // The villager should own a wolf
                         VillagerMemoryType.OWNED_DOG, MemoryStatus.VALUE_PRESENT
                 ), TimeUtil.minutes(1), Math.pow(20, 2),
-                TimeUtil.minutes(30), Math.pow(1.5, 2),
+                TimeUtil.minutes(20), Math.pow(1.5, 2),
                 5, 1,
                 TimeUtil.seconds(30), MAX_WASH_DURATION + MAX_DRY_DURATION);
 
@@ -65,6 +66,13 @@ public final class WashWolfBehavior extends InteractAtEntityBehavior {
         if (this.targetWolf == null) {
             UUID wolfUuid = brain.getMemory(VillagerMemoryType.OWNED_DOG).get();
             this.targetWolf = (Wolf) self.level.getMinecraftWorld().getEntity(wolfUuid);
+
+            // If wolf is not alive, reset memory
+            if (this.targetWolf == null || !this.targetWolf.isAlive()) {
+                self.getBrain().eraseMemory(VillagerMemoryType.OWNED_DOG);
+                return false;
+            }
+
             self.getBrain().setMemory(MemoryModuleType.INTERACTION_TARGET, this.targetWolf);
         }
         return true;
@@ -144,7 +152,7 @@ public final class WashWolfBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void stop(ServerLevel level, Villager self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
 
         // Reset held item

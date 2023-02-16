@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_19_R2.inventory.CraftItemStack;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
@@ -128,7 +129,7 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void stop(ServerLevel level, Villager self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
 
         // Reset held item

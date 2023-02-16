@@ -106,7 +106,7 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void start(ServerLevel level, Villager self, long gameTime) {
+    protected void start(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.start(level, self, gameTime);
         if (self.getVillagerData().getLevel() < 3) {
             this.heldItem = RandomUtil.choice(FEEDABLE_ITEMS_RAW);
@@ -151,7 +151,7 @@ public final class FeedWolfBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void stop(ServerLevel level, Villager self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
 
         // Reset held item

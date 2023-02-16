@@ -150,7 +150,7 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void stop(ServerLevel level, Villager self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
 
         // Reset held item

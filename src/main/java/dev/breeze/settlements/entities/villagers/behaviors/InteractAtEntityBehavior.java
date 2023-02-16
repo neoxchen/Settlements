@@ -1,21 +1,19 @@
 package dev.breeze.settlements.entities.villagers.behaviors;
 
 import dev.breeze.settlements.utils.LogUtil;
+import dev.breeze.settlements.utils.RandomUtil;
+import dev.breeze.settlements.utils.TimeUtil;
 import lombok.Getter;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.npc.Villager;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 
 public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
 
-    /**
-     * The interval between searching nearby entities for the target
-     */
-    @Getter
-    private final int scanCooldownTicks;
     /**
      * Entities outside of this range are ignored
      */
@@ -81,10 +79,9 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
                                     int maxNavigationIntervalTicks, int maxInteractionIntervalTicks,
                                     int maxNavigationTicks, int maxInteractionTicks) {
         // Max run time is calculated by the sum of navigation & interaction time
-        super(preconditions, maxNavigationTicks + maxInteractionTicks);
+        super(preconditions, maxNavigationTicks + maxInteractionTicks, scanCooldownTicks);
 
         // Final variables
-        this.scanCooldownTicks = scanCooldownTicks;
         this.scanRangeSquared = scanRangeSquared;
 
         this.interactCooldownTicks = interactCooldownTicks;
@@ -101,8 +98,8 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
         this.maxInteractionTicks = maxInteractionTicks;
 
         // Dynamic variables
-        // Initial cooldown = max cooldown to prevent spamming
-        this.cooldown = this.interactCooldownTicks;
+        // Initial cooldown = random up to max cooldown to prevent spamming
+        this.cooldown = RandomUtil.RANDOM.nextInt(this.interactCooldownTicks) + TimeUtil.seconds(10);
         this.cooldown = 80;
 
         this.navigationIntervalTicksLeft = 0;
@@ -113,25 +110,12 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
     }
 
     @Override
-    protected final boolean checkExtraStartConditions(ServerLevel level, Villager self) {
-        // TODO: remove debugging action bar
-//        for (Player p : Bukkit.getOnlinePlayers()) {
-//            MessageUtil.sendActionbar(p, "&a%s: %d - target? %s - reach? %s", this.getClass().getSimpleName(), this.cooldown,
-//                    String.valueOf(this.hasTarget()), String.valueOf(this.isTargetReachable(self)));
-//        }
-
-        // Check if we are still in cooldown
-        if (--this.cooldown > 0)
+    protected final boolean checkExtraStartConditionsRateLimited(@Nonnull ServerLevel level, @Nonnull Villager self) {
+        // Not -1 because this method is rate limited
+        this.cooldown -= this.getMaxStartConditionCheckCooldown();
+        if (this.cooldown > 0)
             return false;
-
-        // Check if we should scan or wait
-        if (!this.hasTarget() && this.cooldown < 0) {
-            this.cooldown = this.scanCooldownTicks;
-            return false;
-        }
-
-        // Only reached when (scan) cooldown == 0 or has target
-        return this.hasTarget() || this.scan(level, self);
+        return this.scan(level, self);
     }
 
     /**
@@ -151,10 +135,7 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
             return false;
 
         // Check extra conditions
-        if (!this.checkExtraCanStillUseConditions(level, self, gameTime))
-            return false;
-
-        return this.checkExtraStartConditions(level, self);
+        return this.checkExtraCanStillUseConditions(level, self, gameTime);
     }
 
     /**
@@ -163,7 +144,7 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
     protected abstract boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime);
 
     @Override
-    protected final void tick(ServerLevel level, Villager self, long gameTime) {
+    protected final void tick(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         // Interact with the target if we can reach it
         if (this.isTargetReachable(self)) {
             // Increment interaction duration
@@ -212,7 +193,7 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
     protected abstract void interactWithTarget(ServerLevel level, Villager self, long gameTime);
 
     @Override
-    protected void stop(ServerLevel level, Villager self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
 
         // Reset variables

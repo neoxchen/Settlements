@@ -27,6 +27,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.craftbukkit.v1_19_R2.inventory.CraftItemStack;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +55,7 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
                         // There should be living entities nearby
                         MemoryModuleType.NEAREST_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
                 ), TimeUtil.minutes(1), Math.pow(20, 2),
-                TimeUtil.hours(1), Math.pow(1.5, 2),
+                TimeUtil.minutes(5), Math.pow(1.5, 2),
                 5, TimeUtil.seconds(1),
                 TimeUtil.seconds(20), TimeUtil.seconds(10));
 
@@ -152,7 +153,7 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
     }
 
     @Override
-    protected void stop(ServerLevel level, Villager self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
 
         // Reset held item

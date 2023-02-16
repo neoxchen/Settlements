@@ -31,17 +31,17 @@ public final class WalkDogBehavior extends BaseVillagerBehavior {
     }
 
     @Override
-    protected final boolean checkExtraStartConditions(@Nonnull ServerLevel level, @Nonnull Villager self) {
+    protected boolean checkExtraStartConditionsRateLimited(@Nonnull ServerLevel level, @Nonnull Villager self) {
         return self.getBrain().hasMemoryValue(VillagerMemoryType.WALK_DOG_TARGET);
     }
 
     @Override
-    protected final boolean canStillUse(ServerLevel level, Villager self, long gameTime) {
-        return this.checkExtraStartConditions(level, self);
+    protected boolean canStillUse(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
+        return self.getBrain().hasMemoryValue(VillagerMemoryType.WALK_DOG_TARGET);
     }
 
     @Override
-    protected void start(ServerLevel level, Villager self, long gameTime) {
+    protected void start(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.start(level, self, gameTime);
 
         VillagerWolf wolf = self.getBrain().getMemory(VillagerMemoryType.WALK_DOG_TARGET).get();
@@ -65,7 +65,7 @@ public final class WalkDogBehavior extends BaseVillagerBehavior {
     }
 
     @Override
-    protected void stop(ServerLevel level, Villager self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
 
         if (this.cachedWolf != null) {
