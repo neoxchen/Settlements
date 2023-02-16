@@ -78,8 +78,10 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
     }
 
     @Override
-    protected boolean checkExtraStartConditions(@Nonnull ServerLevel level, @Nonnull Wolf self) {
-        if (--this.cooldown > 0)
+    protected boolean checkExtraStartConditionsRateLimited(@Nonnull ServerLevel level, @Nonnull Wolf self) {
+        // Not -1 because this method is rate limited
+        this.cooldown -= this.getMaxStartConditionCheckCooldown();
+        if (this.cooldown > 0)
             return false;
 
         // Check if the wolf has owner
@@ -91,13 +93,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
         if (self.isOrderedToSit())
             return false;
 
-        // Try to scan for nearby items
-        if (!this.scan(level, self)) {
-            this.cooldown = MAX_SCAN_COOLDOWN;
-            return false;
-        }
-
-        return true;
+        return this.scan(level, self);
     }
 
     private boolean scan(@Nonnull ServerLevel level, @Nonnull Wolf self) {
@@ -139,7 +135,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
     }
 
     @Override
-    protected void start(ServerLevel level, Wolf self, long gameTime) {
+    protected void start(@Nonnull ServerLevel level, @Nonnull Wolf self, long gameTime) {
         super.start(level, self, gameTime);
 
         this.status = FetchStatus.SEEKING;
@@ -194,7 +190,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
     }
 
     @Override
-    protected void stop(ServerLevel level, Wolf self, long gameTime) {
+    protected void stop(@Nonnull ServerLevel level, @Nonnull Wolf self, long gameTime) {
         super.stop(level, self, gameTime);
 
         this.cooldown = MAX_FETCH_COOLDOWN;

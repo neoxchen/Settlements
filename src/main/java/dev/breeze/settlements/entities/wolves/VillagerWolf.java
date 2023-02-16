@@ -6,7 +6,6 @@ import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Dynamic;
 import dev.breeze.settlements.Main;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
-import dev.breeze.settlements.entities.wolves.behaviors.TestWolfBehavior;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfSitBehaviorController;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfWalkBehavior;
@@ -268,7 +267,7 @@ public class VillagerWolf extends Wolf {
                 .build());
         brain.addActivity(Activity.REST, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(3, WolfSitBehaviorController.sit()))
-                .add(Pair.of(1, new TestWolfBehavior("REST")))
+//                .add(Pair.of(1, new TestWolfBehavior("REST")))
                 .build());
 
         // Set important activities

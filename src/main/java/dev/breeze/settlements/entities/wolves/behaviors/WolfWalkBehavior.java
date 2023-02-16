@@ -93,8 +93,10 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
     }
 
     @Override
-    protected boolean checkExtraStartConditions(@Nonnull ServerLevel level, @Nonnull Wolf wolf) {
-        if (--this.cooldown > 0)
+    protected boolean checkExtraStartConditionsRateLimited(@Nonnull ServerLevel level, @Nonnull Wolf wolf) {
+        // Not -1 because this method is rate limited
+        this.cooldown -= this.getMaxStartConditionCheckCooldown();
+        if (this.cooldown > 0)
             return false;
 
         if (!(wolf instanceof VillagerWolf self))
