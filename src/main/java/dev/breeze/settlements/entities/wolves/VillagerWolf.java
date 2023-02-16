@@ -310,6 +310,9 @@ public class VillagerWolf extends Wolf {
 
     }
 
+    /*
+     * Custom node evaluator for wolves to step over fences
+     */
     private static class WolfNodeEvaluator extends WalkNodeEvaluator {
 
         // Copied from parent because it's private
@@ -320,23 +323,6 @@ public class VillagerWolf extends Wolf {
             this.collisionCache.clear();
             super.done();
         }
-
-//        @Override
-//        protected boolean isNeighborValid(@Nullable Node neighbor, @Nonnull Node origin) {
-//            // Get super's answer first
-//            boolean isValid = super.isNeighborValid(neighbor, origin);
-//
-//            // Check if node is null or closed (previously visited)
-//            if (neighbor == null || neighbor.closed)
-//                return false;
-//
-//            BlockPathTypes blockPathTypes = this.getCachedBlockType(this.mob, origin.x, origin.y, origin.z);
-//            if (blockPathTypes != BlockPathTypes.FENCE)
-//                return isValid;
-//
-//            highlight(level.getWorldBorder().world, origin.asBlockPos(), Particle.END_ROD);
-//            return true;
-//        }
 
         /**
          * Mostly copied over from the parent class
@@ -420,14 +406,14 @@ public class VillagerWolf extends Wolf {
                     }
                 }
 
-                // >> Custom code 2 begin -- recognize fence gate as "walkable into"
-                // - aka allows the villager to pathfind through fence gate blocks
+                // >> Custom code begin -- recognize fences as walkable
+                // - aka allows the wolf to pathfind on top of fences
                 if (node == null && currNodeType == BlockPathTypes.FENCE) {
                     node = this.getNode(x, y + 1, z);
                     node.type = BlockPathTypes.FENCE;
                     node.costMalus = 2;
                 }
-                // << Custom code 2 ends
+                // << Custom code ends
 
                 if (doesBlockHavePartialCollision(currNodeType) && node == null) {
                     node = this.getNode(x, y, z);
