@@ -99,27 +99,38 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
         if (this.cooldown > 0)
             return false;
 
+        if (!this.checkSelfAndOwnerConditions(wolf))
+            return false;
+
+        return this.isPlayTime(wolf);
+    }
+
+    @Override
+    protected boolean canStillUse(@Nonnull ServerLevel level, @Nonnull Wolf wolf, long gameTime) {
+        // Check time limit
+        if (this.cooldown < -MAX_WALK_DURATION)
+            return false;
+
+        if (!this.checkSelfAndOwnerConditions(wolf))
+            return false;
+
+        return this.isPlayTime(wolf);
+    }
+
+    private boolean checkSelfAndOwnerConditions(Wolf wolf) {
         if (!(wolf instanceof VillagerWolf self))
             return false;
 
         // Check if the wolf has owner
         BaseVillager owner = self.getOwner();
-        if (owner == null)
+        if (owner == null || !owner.isAlive())
             return false;
 
         // Check if the wolf is sitting
         if (self.isOrderedToSit())
             return false;
 
-        return self.getBrain().getSchedule().getActivityAt((int) level.getWorld().getTime()) == Activity.PLAY;
-    }
-
-    @Override
-    protected boolean canStillUse(@Nonnull ServerLevel level, @Nonnull Wolf self, long gameTime) {
-        // Check time limit
-        if (this.cooldown < -MAX_WALK_DURATION)
-            return false;
-        return this.checkExtraStartConditions(level, self);
+        return true;
     }
 
     @Override
@@ -260,6 +271,10 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
             // Remove all entities recently sniffed
             villagerWolf.getBrain().eraseMemory(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES);
         }
+    }
+
+    private boolean isPlayTime(Wolf wolf) {
+        return wolf.getBrain().getSchedule().getActivityAt((int) wolf.level.getWorld().getTime()) == Activity.PLAY;
     }
 
     /**
