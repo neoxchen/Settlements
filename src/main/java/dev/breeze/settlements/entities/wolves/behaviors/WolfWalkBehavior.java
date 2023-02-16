@@ -18,6 +18,7 @@ import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -40,6 +41,11 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
      * How far away can the wolf notify the owner its intent to walk
      */
     private static final double NOTIFY_OWNER_DISTANCE_SQUARED = Math.pow(2, 2);
+
+    /**
+     * How far away can the wolf be away from its owner
+     */
+    private static final double MAX_DISTANCE_TO_OWNER_SQUARED = Math.pow(7, 2);
 
     /**
      * Also used in WalkDogBehavior for villagers
@@ -190,7 +196,8 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
             // Spawn dig effects if isDigging
             if (this.isDigging && this.sniffDuration % 5 == 0) {
                 Location location = new Location(self.level.getWorld(), self.getX(), self.getY(), self.getZ());
-                ParticleUtil.blockBreak(location, location.clone().add(0, -1, 0).getBlock().getType(), 5, 0.4, 0.3, 0.4, 0.1);
+                Block under = location.clone().add(0, -1, 0).getBlock();
+                ParticleUtil.blockBreak(location, under.getType(), 5, 0.4, 0.3, 0.4, 0.1);
                 SoundUtil.playSoundPublic(location, Sound.BLOCK_SAND_HIT, 0.2F, 1.4F);
             }
 
@@ -200,7 +207,20 @@ public final class WolfWalkBehavior extends BaseWolfBehavior {
         // Reset isDigging
         this.isDigging = false;
 
-        // Current path is done, randomize another target
+        // Current path is complete
+        // If owner is too far, follow owner
+        if (self.distanceToSqr(self.getOwner()) > MAX_DISTANCE_TO_OWNER_SQUARED) {
+            // Navigate to the entity
+            self.getNavigation().moveTo(self.getOwner(), WALK_SPEED_MODIFIER);
+            self.getLookControl().setLookAt(self.getOwner());
+
+            // Set cache variables
+            this.target = null;
+            this.targetEntity = self.getOwner();
+            return;
+        }
+
+        // Owner is nearby, randomize to another target
         boolean sniffTargetFound = false;
         if (RandomUtil.RANDOM.nextDouble() < SNIFF_ENTITY_PROBABILITY) {
             // Sniff an entity next
