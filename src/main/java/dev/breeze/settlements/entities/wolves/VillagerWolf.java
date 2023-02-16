@@ -16,7 +16,6 @@ import dev.breeze.settlements.entities.wolves.goals.WolfSitWhenOrderedToGoal;
 import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
 import dev.breeze.settlements.entities.wolves.sensors.WolfSensorType;
 import dev.breeze.settlements.utils.LogUtil;
-import dev.breeze.settlements.utils.TimeUtil;
 import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import lombok.Getter;
@@ -32,13 +31,16 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
+import net.minecraft.world.entity.ai.behavior.UpdateActivityFromSchedule;
 import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
 import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.entity.animal.Wolf;
+import net.minecraft.world.entity.monster.*;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.schedule.Schedule;
 import net.minecraft.world.entity.schedule.ScheduleBuilder;
@@ -54,17 +56,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_19_R2.CraftWorld;
 import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.List;
 
 public class VillagerWolf extends Wolf {
 
     public static final String ENTITY_TYPE = "settlements_wolf";
-
-    private static final int MAX_CHECK_SCHEDULE_COOLDOWN = TimeUtil.seconds(30);
-    private int checkScheduleCooldown;
 
     @Getter
     @Setter
@@ -168,13 +167,9 @@ public class VillagerWolf extends Wolf {
         // Add movement-lock goal (prevent wolf from moving in other goals)
         this.goalSelector.addGoal(1, new WolfMovementLockGoal(this));
 
-        // Add target
-//        this.targetSelector.addGoal(GOAL_PRIORITY, new HurtByTargetGoal(this, Villager.class).setAlertOthers(VillagerWolf.class));
-
-//        Class[] hostiles = new Class[]{Zombie.class, Pillager.class, Vindicator.class, Vex.class, Witch.class, Evoker.class, Illusioner.class, Ravager.class};
-//        for (Class clazz : hostiles)
-//            this.targetSelector.addGoal(GOAL_PRIORITY + 1, new NearestAttackableTargetGoal<>(this, clazz, true));
-//        this.goalSelector.addGoal(GOAL_PRIORITY, new TossItemGoal(this, new TossItemGoal.ItemEntry[]{}, 6));
+        // Add target to all mobs that are hostile to villagers
+        List.of(Zombie.class, Pillager.class, Vindicator.class, Vex.class, Witch.class, Evoker.class, Illusioner.class, Ravager.class)
+                .forEach(clazz -> this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, clazz, true)));
     }
 
     /*
@@ -213,12 +208,6 @@ public class VillagerWolf extends Wolf {
     public void tick() {
         super.tick();
 
-        // Check schedule on a cooldown
-        if (--this.checkScheduleCooldown < 0) {
-            this.brain.updateActivityFromSchedule(this.level.getDayTime(), this.level.getGameTime());
-            this.checkScheduleCooldown = MAX_CHECK_SCHEDULE_COOLDOWN;
-        }
-
         // TODO: edit this?
         this.getBrain().tick((ServerLevel) this.level, this);
     }
@@ -248,26 +237,27 @@ public class VillagerWolf extends Wolf {
 
         // Register behaviors
         // TODO: Are there any additional core behaviors needed?
-        brain.addActivity(Activity.CORE, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-//                .add(Pair.of(1, new TestWolfBehavior("CORE")))
+        brain.addActivity(Activity.CORE, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Wolf>>>()
                 .build());
         // TODO: Is the default wander/idle behavior enough?
-        brain.addActivity(Activity.IDLE, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(5, WolfSitBehaviorController.stand()))
-//                .add(Pair.of(1, new TestWolfBehavior("IDLE")))
+        brain.addActivity(Activity.IDLE, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Wolf>>>()
+                .add(Pair.of(2, WolfSitBehaviorController.stand()))
+                .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());
         // TODO: Chase sheep behaviors?
-        brain.addActivity(Activity.WORK, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(5, WolfSitBehaviorController.stand()))
-                .add(Pair.of(1, new WolfFetchItemBehavior(this.getOwner().getFetchableItemsPredicate())))
+        brain.addActivity(Activity.WORK, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Wolf>>>()
+                .add(Pair.of(2, WolfSitBehaviorController.stand()))
+                .add(Pair.of(3, new WolfFetchItemBehavior(this.getOwner().getFetchableItemsPredicate())))
+                .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());
-        brain.addActivity(Activity.PLAY, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(5, WolfSitBehaviorController.stand()))
-                .add(Pair.of(0, new WolfWalkBehavior()))
+        brain.addActivity(Activity.PLAY, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Wolf>>>()
+                .add(Pair.of(2, WolfSitBehaviorController.stand()))
+                .add(Pair.of(3, new WolfWalkBehavior()))
+                .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());
-        brain.addActivity(Activity.REST, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
-                .add(Pair.of(3, WolfSitBehaviorController.sit()))
-//                .add(Pair.of(1, new TestWolfBehavior("REST")))
+        brain.addActivity(Activity.REST, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Wolf>>>()
+                .add(Pair.of(2, WolfSitBehaviorController.sit()))
+                .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());
 
         // Set important activities
@@ -299,7 +289,6 @@ public class VillagerWolf extends Wolf {
     public void tameByVillager(@Nonnull BaseVillager villager) {
         this.setOwnerUUID(villager.getUUID());
         this.setCollarColor(DyeColor.LIME);
-        this.heal(20F, EntityRegainHealthEvent.RegainReason.REGEN);
     }
 
     /*

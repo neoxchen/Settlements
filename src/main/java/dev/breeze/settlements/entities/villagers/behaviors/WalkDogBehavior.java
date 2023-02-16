@@ -1,5 +1,6 @@
 package dev.breeze.settlements.entities.villagers.behaviors;
 
+import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.entities.wolves.VillagerWolf;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfWalkBehavior;
@@ -44,6 +45,10 @@ public final class WalkDogBehavior extends BaseVillagerBehavior {
     protected void start(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.start(level, self, gameTime);
 
+        // Disable default walk target setting
+        if (self instanceof BaseVillager baseVillager)
+            baseVillager.setDefaultWalkTargetDisabled(true);
+
         VillagerWolf wolf = self.getBrain().getMemory(VillagerMemoryType.WALK_DOG_TARGET).get();
         this.cachedWolf = wolf;
 
@@ -67,6 +72,10 @@ public final class WalkDogBehavior extends BaseVillagerBehavior {
     @Override
     protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
+
+        // Enable default walk target setting
+        if (self instanceof BaseVillager baseVillager)
+            baseVillager.setDefaultWalkTargetDisabled(false);
 
         if (this.cachedWolf != null) {
             // Detach leash

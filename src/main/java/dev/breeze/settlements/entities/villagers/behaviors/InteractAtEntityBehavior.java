@@ -1,5 +1,6 @@
 package dev.breeze.settlements.entities.villagers.behaviors;
 
+import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.utils.LogUtil;
 import dev.breeze.settlements.utils.RandomUtil;
 import dev.breeze.settlements.utils.TimeUtil;
@@ -125,6 +126,15 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
     protected abstract boolean scan(ServerLevel level, Villager self);
 
     @Override
+    protected void start(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
+        super.start(level, self, gameTime);
+
+        // Disable default walk target setting
+        if (self instanceof BaseVillager baseVillager)
+            baseVillager.setDefaultWalkTargetDisabled(true);
+    }
+
+    @Override
     protected final boolean canStillUse(ServerLevel level, Villager self, long gameTime) {
         // Terminate if we no longer have target
         if (!this.hasTarget())
@@ -195,6 +205,10 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
     @Override
     protected void stop(@Nonnull ServerLevel level, @Nonnull Villager self, long gameTime) {
         super.stop(level, self, gameTime);
+
+        // Enable default walk target setting
+        if (self instanceof BaseVillager baseVillager)
+            baseVillager.setDefaultWalkTargetDisabled(false);
 
         // Reset variables
         this.cooldown = this.getInteractCooldownTicks();
