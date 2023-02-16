@@ -218,8 +218,9 @@ public class BaseVillager extends Villager {
                 // TODO: default behaviors?
         ));
 
-        // Tame wolf behavior
-        if (profession == VillagerProfession.SHEPHERD || profession == VillagerProfession.FARMER || profession == VillagerProfession.BUTCHER) {
+        // Wolf-related behaviors
+        if (profession == VillagerProfession.SHEPHERD || profession == VillagerProfession.FARMER || profession == VillagerProfession.LEATHERWORKER
+                || profession == VillagerProfession.BUTCHER) {
             behaviors.addAll(List.of(
                     Pair.of(new TameWolfBehavior(), 1),
                     Pair.of(new WalkDogBehavior(), 1),
