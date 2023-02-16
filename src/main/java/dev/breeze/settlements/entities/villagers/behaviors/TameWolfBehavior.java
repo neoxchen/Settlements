@@ -93,7 +93,7 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
 
     @Override
     protected boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime) {
-        if (this.targetWolf == null || this.targetWolf.isDeadOrDying())
+        if (this.targetWolf == null || !this.targetWolf.isAlive())
             return false;
         return this.targetWolf.getOwnerUUID() == null;
     }

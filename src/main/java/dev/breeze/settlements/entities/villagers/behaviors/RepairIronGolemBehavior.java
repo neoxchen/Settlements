@@ -104,7 +104,7 @@ public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
 
     @Override
     protected boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime) {
-        if (this.targetGolem == null || this.targetGolem.isDeadOrDying())
+        if (this.targetGolem == null || !this.targetGolem.isAlive())
             return false;
         return this.needHealing(this.targetGolem);
     }

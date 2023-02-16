@@ -4,13 +4,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
 import dev.breeze.settlements.entities.villagers.behaviors.*;
-import dev.breeze.settlements.entities.villagers.goals.item_toss.TossItemGoal;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.entities.villagers.navigation.VillagerNavigation;
 import dev.breeze.settlements.utils.LogUtil;
 import dev.breeze.settlements.utils.MessageUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -18,32 +18,30 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.ai.behavior.RunOne;
 import net.minecraft.world.entity.ai.behavior.VillagerGoalPackages;
-import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
-import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.monster.*;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.npc.VillagerType;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.entity.schedule.Schedule;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_19_R2.CraftWorld;
 import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class BaseVillager extends Villager {
 
@@ -280,7 +278,8 @@ public class BaseVillager extends Villager {
         }
 
         // Tame wolf behavior
-        if (profession == VillagerProfession.SHEPHERD || profession == VillagerProfession.FARMER || profession == VillagerProfession.BUTCHER) {
+        if (profession == VillagerProfession.SHEPHERD || profession == VillagerProfession.FARMER || profession == VillagerProfession.LEATHERWORKER
+                || profession == VillagerProfession.BUTCHER) {
             behaviors.add(Pair.of(new TameWolfBehavior(), 1));
         }
 
@@ -290,132 +289,227 @@ public class BaseVillager extends Villager {
     /*
      * Pathfinder goals
      */
-    private void initPathfinderGoals() {
-        // Filter by profession & level
-        List<TossItemGoal.ItemEntry> entries = new ArrayList<>();
-        LogUtil.info("Profession: " + this.getProfession());
-        if (this.getProfession() == VillagerProfession.NONE) {
-            // Unemployed
-        } else if (this.getProfession() == VillagerProfession.ARMORER) {
-            entries.add(new TossItemGoal.ItemEntry(100, new ItemStack(Material.COAL), 3, 1, 5));
-            // TODO: armor
-            // TODO: shield
-        } else if (this.getProfession() == VillagerProfession.BUTCHER) {
-            for (Material material : new Material[]{
-                    Material.CHICKEN, Material.PORKCHOP, Material.BEEF, Material.RABBIT, Material.MUTTON,
-                    Material.COOKED_CHICKEN, Material.COOKED_PORKCHOP, Material.COOKED_BEEF, Material.COOKED_RABBIT, Material.COOKED_MUTTON,
-            }) {
-                entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(material), 1.5, 0.3, -5));
-            }
-
-            entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(Material.KELP), 0.5, 0.01, -10));
-            entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(Material.DRIED_KELP), 1, 0.1, 0));
-            entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(Material.DRIED_KELP_BLOCK), 5, 1, 15));
-
-            // TODO: sweet berries
-        } else if (this.getProfession() == VillagerProfession.CARTOGRAPHER) {
-            for (Material material : new Material[]{Material.PAPER, Material.MAP, Material.FILLED_MAP}) {
-                entries.add(new TossItemGoal.ItemEntry(20, new ItemStack(material), 0.5, 0.01, -10));
-            }
-            entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(Material.GLASS_PANE), 3, 0.3, 5));
-            // TODO: more?
-        } else if (this.getProfession() == VillagerProfession.CLERIC) {
-            entries.add(new TossItemGoal.ItemEntry(50, new ItemStack(Material.ROTTEN_FLESH), 1, 0.1, 0));
-            for (Material material : new Material[]{Material.REDSTONE, Material.LAPIS_LAZULI}) {
-                entries.add(new TossItemGoal.ItemEntry(15, new ItemStack(material), 2, 0.5, 0));
-            }
-            for (Material material : new Material[]{Material.REDSTONE_BLOCK, Material.LAPIS_BLOCK}) {
-                entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(material), 5, 2, 20));
-            }
-
-            // TODO: glowstone
-            // TODO: pearl
-            // TODO: priest stuff
-        } else if (this.getProfession() == VillagerProfession.FARMER) {
-            for (Material material : new Material[]{Material.WHEAT_SEEDS, Material.BEETROOT_SEEDS, Material.MELON_SEEDS,
-                    Material.PUMPKIN_SEEDS}) {
-                entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(material), 0.1, 0.01, -20));
-            }
-            for (Material material : new Material[]{Material.POTATO, Material.CARROT, Material.BEETROOT}) {
-                entries.add(new TossItemGoal.ItemEntry(15, new ItemStack(material), 1, 0.1, 0));
-            }
-            for (Material material : new Material[]{Material.MELON, Material.PUMPKIN}) {
-                entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(material), 4, 1.5, 10));
-            }
-
-            // TODO: pumpkin golem?
-            // TODO: golden carrot / glistering melon regen?
-        } else if (this.getProfession() == VillagerProfession.FISHERMAN) {
-            for (Material material : new Material[]{Material.COD, Material.SALMON, Material.TROPICAL_FISH}) {
-                entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(material), 0.5, 0.1, -5));
-            }
-
-            // TODO: pufferfish
-            // TODO: fishing rod?
-        } else if (this.getProfession() == VillagerProfession.FLETCHER) {
-            entries.add(new TossItemGoal.ItemEntry(100, new ItemStack(Material.FLINT), 0.5, 0.5, -3));
-
-            // TODO: arrow & tipped arrows at enemy
-            // TODO: at friendly
-        } else if (this.getProfession() == VillagerProfession.LEATHERWORKER) {
-            entries.add(new TossItemGoal.ItemEntry(90, new ItemStack(Material.LEATHER), 0.5, 0.1, 5));
-            entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(Material.SCUTE), 2, 1, 15));
-
-            // TODO: leather armor
-        } else if (this.getProfession() == VillagerProfession.LIBRARIAN) {
-            entries.add(new TossItemGoal.ItemEntry(100, new ItemStack(Material.BOOK), 1.5, 0.8, 10));
-            // TODO: toss enchanted books
-            // TODO: cast spells
-        } else if (this.getProfession() == VillagerProfession.MASON) {
-            for (Material material : new Material[]{Material.STONE, Material.STONE_BRICKS, Material.ANDESITE, Material.POLISHED_ANDESITE,
-                    Material.GRANITE, Material.POLISHED_GRANITE, Material.DIORITE, Material.POLISHED_DIORITE, Material.DRIPSTONE_BLOCK,
-                    Material.TERRACOTTA, Material.WHITE_TERRACOTTA, Material.ORANGE_TERRACOTTA, Material.MAGENTA_TERRACOTTA,
-                    Material.LIGHT_BLUE_TERRACOTTA,
-                    Material.YELLOW_TERRACOTTA, Material.LIME_TERRACOTTA, Material.PINK_TERRACOTTA, Material.GRAY_TERRACOTTA,
-                    Material.LIGHT_GRAY_TERRACOTTA,
-                    Material.CYAN_TERRACOTTA, Material.PURPLE_TERRACOTTA, Material.BLUE_TERRACOTTA, Material.BROWN_TERRACOTTA,
-                    Material.GREEN_TERRACOTTA,
-                    Material.RED_TERRACOTTA, Material.BLACK_TERRACOTTA}) {
-                entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(material), 2.5, 2, 10));
-            }
-        } else if (this.getProfession() == VillagerProfession.NITWIT) {
-            // Almost does nothing
-            entries.add(new TossItemGoal.ItemEntry(80, new ItemStack(Material.STONE_BUTTON), 0.01, 0.01, 0));
-            entries.add(new TossItemGoal.ItemEntry(20, new ItemStack(Material.POLISHED_BLACKSTONE_BUTTON), 0.01, 0.01, 0));
-        } else if (this.getProfession() == VillagerProfession.SHEPHERD) {
-            for (Material material : new Material[]{Material.WHITE_WOOL, Material.ORANGE_WOOL, Material.MAGENTA_WOOL,
-                    Material.LIGHT_BLUE_WOOL,
-                    Material.YELLOW_WOOL, Material.LIME_WOOL, Material.PINK_WOOL, Material.GRAY_WOOL, Material.LIGHT_GRAY_WOOL,
-                    Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL, Material.BROWN_WOOL, Material.GREEN_WOOL,
-                    Material.RED_WOOL, Material.BLACK_WOOL}) {
-                entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(material), 1, 0.5, 0));
-            }
-
-            // TODO: wolf
-        } else if (this.getProfession() == VillagerProfession.TOOLSMITH) {
-            // TODO: throw tools
-            // TODO: repair golems
-        } else if (this.getProfession() == VillagerProfession.WEAPONSMITH) {
-            // TODO: throw weapons
-            // TODO: repair golems
-        }
-
-        entries.add(new TossItemGoal.ItemEntry(2, new ItemStack(Material.EMERALD), 3, 0.5, 0));
-        entries.add(new TossItemGoal.ItemEntry(1, new ItemStack(Material.EMERALD_BLOCK), 5, 2, 10));
-
-        // Add target
-        this.targetSelector.addGoal(GOAL_PRIORITY, new HurtByTargetGoal(this, Villager.class).setAlertOthers(BaseVillager.class));
-
-        Class[] hostiles = new Class[]{Zombie.class, Pillager.class, Vindicator.class, Vex.class,
-                Witch.class, Evoker.class, Illusioner.class, Ravager.class};
-        for (Class clazz : hostiles)
-            this.targetSelector.addGoal(GOAL_PRIORITY + 1, new NearestAttackableTargetGoal<>(this, clazz, true));
-        this.goalSelector.addGoal(GOAL_PRIORITY, new TossItemGoal(this, entries.toArray(new TossItemGoal.ItemEntry[0]), 6));
-    }
+//    private void initPathfinderGoals() {
+//        // Filter by profession & level
+//        List<TossItemGoal.ItemEntry> entries = new ArrayList<>();
+//        LogUtil.info("Profession: " + this.getProfession());
+//        if (this.getProfession() == VillagerProfession.NONE) {
+//            // Unemployed
+//        } else if (this.getProfession() == VillagerProfession.ARMORER) {
+//            entries.add(new TossItemGoal.ItemEntry(100, new ItemStack(Material.COAL), 3, 1, 5));
+//            // TODO: armor
+//            // TODO: shield
+//        } else if (this.getProfession() == VillagerProfession.BUTCHER) {
+//            for (Material material : new Material[]{
+//                    Material.CHICKEN, Material.PORKCHOP, Material.BEEF, Material.RABBIT, Material.MUTTON,
+//                    Material.COOKED_CHICKEN, Material.COOKED_PORKCHOP, Material.COOKED_BEEF, Material.COOKED_RABBIT, Material.COOKED_MUTTON,
+//            }) {
+//                entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(material), 1.5, 0.3, -5));
+//            }
+//
+//            entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(Material.KELP), 0.5, 0.01, -10));
+//            entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(Material.DRIED_KELP), 1, 0.1, 0));
+//            entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(Material.DRIED_KELP_BLOCK), 5, 1, 15));
+//
+//            // TODO: sweet berries
+//        } else if (this.getProfession() == VillagerProfession.CARTOGRAPHER) {
+//            for (Material material : new Material[]{Material.PAPER, Material.MAP, Material.FILLED_MAP}) {
+//                entries.add(new TossItemGoal.ItemEntry(20, new ItemStack(material), 0.5, 0.01, -10));
+//            }
+//            entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(Material.GLASS_PANE), 3, 0.3, 5));
+//            // TODO: more?
+//        } else if (this.getProfession() == VillagerProfession.CLERIC) {
+//            entries.add(new TossItemGoal.ItemEntry(50, new ItemStack(Material.ROTTEN_FLESH), 1, 0.1, 0));
+//            for (Material material : new Material[]{Material.REDSTONE, Material.LAPIS_LAZULI}) {
+//                entries.add(new TossItemGoal.ItemEntry(15, new ItemStack(material), 2, 0.5, 0));
+//            }
+//            for (Material material : new Material[]{Material.REDSTONE_BLOCK, Material.LAPIS_BLOCK}) {
+//                entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(material), 5, 2, 20));
+//            }
+//
+//            // TODO: glowstone
+//            // TODO: pearl
+//            // TODO: priest stuff
+//        } else if (this.getProfession() == VillagerProfession.FARMER) {
+//            for (Material material : new Material[]{Material.WHEAT_SEEDS, Material.BEETROOT_SEEDS, Material.MELON_SEEDS,
+//                    Material.PUMPKIN_SEEDS}) {
+//                entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(material), 0.1, 0.01, -20));
+//            }
+//            for (Material material : new Material[]{Material.POTATO, Material.CARROT, Material.BEETROOT}) {
+//                entries.add(new TossItemGoal.ItemEntry(15, new ItemStack(material), 1, 0.1, 0));
+//            }
+//            for (Material material : new Material[]{Material.MELON, Material.PUMPKIN}) {
+//                entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(material), 4, 1.5, 10));
+//            }
+//
+//            // TODO: pumpkin golem?
+//            // TODO: golden carrot / glistering melon regen?
+//        } else if (this.getProfession() == VillagerProfession.FISHERMAN) {
+//            for (Material material : new Material[]{Material.COD, Material.SALMON, Material.TROPICAL_FISH}) {
+//                entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(material), 0.5, 0.1, -5));
+//            }
+//
+//            // TODO: pufferfish
+//            // TODO: fishing rod?
+//        } else if (this.getProfession() == VillagerProfession.FLETCHER) {
+//            entries.add(new TossItemGoal.ItemEntry(100, new ItemStack(Material.FLINT), 0.5, 0.5, -3));
+//
+//            // TODO: arrow & tipped arrows at enemy
+//            // TODO: at friendly
+//        } else if (this.getProfession() == VillagerProfession.LEATHERWORKER) {
+//            entries.add(new TossItemGoal.ItemEntry(90, new ItemStack(Material.LEATHER), 0.5, 0.1, 5));
+//            entries.add(new TossItemGoal.ItemEntry(10, new ItemStack(Material.SCUTE), 2, 1, 15));
+//
+//            // TODO: leather armor
+//        } else if (this.getProfession() == VillagerProfession.LIBRARIAN) {
+//            entries.add(new TossItemGoal.ItemEntry(100, new ItemStack(Material.BOOK), 1.5, 0.8, 10));
+//            // TODO: toss enchanted books
+//            // TODO: cast spells
+//        } else if (this.getProfession() == VillagerProfession.MASON) {
+//            for (Material material : new Material[]{Material.STONE, Material.STONE_BRICKS, Material.ANDESITE, Material.POLISHED_ANDESITE,
+//                    Material.GRANITE, Material.POLISHED_GRANITE, Material.DIORITE, Material.POLISHED_DIORITE, Material.DRIPSTONE_BLOCK,
+//                    Material.TERRACOTTA, Material.WHITE_TERRACOTTA, Material.ORANGE_TERRACOTTA, Material.MAGENTA_TERRACOTTA,
+//                    Material.LIGHT_BLUE_TERRACOTTA,
+//                    Material.YELLOW_TERRACOTTA, Material.LIME_TERRACOTTA, Material.PINK_TERRACOTTA, Material.GRAY_TERRACOTTA,
+//                    Material.LIGHT_GRAY_TERRACOTTA,
+//                    Material.CYAN_TERRACOTTA, Material.PURPLE_TERRACOTTA, Material.BLUE_TERRACOTTA, Material.BROWN_TERRACOTTA,
+//                    Material.GREEN_TERRACOTTA,
+//                    Material.RED_TERRACOTTA, Material.BLACK_TERRACOTTA}) {
+//                entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(material), 2.5, 2, 10));
+//            }
+//        } else if (this.getProfession() == VillagerProfession.NITWIT) {
+//            // Almost does nothing
+//            entries.add(new TossItemGoal.ItemEntry(80, new ItemStack(Material.STONE_BUTTON), 0.01, 0.01, 0));
+//            entries.add(new TossItemGoal.ItemEntry(20, new ItemStack(Material.POLISHED_BLACKSTONE_BUTTON), 0.01, 0.01, 0));
+//        } else if (this.getProfession() == VillagerProfession.SHEPHERD) {
+//            for (Material material : new Material[]{Material.WHITE_WOOL, Material.ORANGE_WOOL, Material.MAGENTA_WOOL,
+//                    Material.LIGHT_BLUE_WOOL,
+//                    Material.YELLOW_WOOL, Material.LIME_WOOL, Material.PINK_WOOL, Material.GRAY_WOOL, Material.LIGHT_GRAY_WOOL,
+//                    Material.CYAN_WOOL, Material.PURPLE_WOOL, Material.BLUE_WOOL, Material.BROWN_WOOL, Material.GREEN_WOOL,
+//                    Material.RED_WOOL, Material.BLACK_WOOL}) {
+//                entries.add(new TossItemGoal.ItemEntry(5, new ItemStack(material), 1, 0.5, 0));
+//            }
+//
+//            // TODO: wolf
+//        } else if (this.getProfession() == VillagerProfession.TOOLSMITH) {
+//            // TODO: throw tools
+//            // TODO: repair golems
+//        } else if (this.getProfession() == VillagerProfession.WEAPONSMITH) {
+//            // TODO: throw weapons
+//            // TODO: repair golems
+//        }
+//
+//        entries.add(new TossItemGoal.ItemEntry(2, new ItemStack(Material.EMERALD), 3, 0.5, 0));
+//        entries.add(new TossItemGoal.ItemEntry(1, new ItemStack(Material.EMERALD_BLOCK), 5, 2, 10));
+//
+//        // Add target
+//        this.targetSelector.addGoal(GOAL_PRIORITY, new HurtByTargetGoal(this, Villager.class).setAlertOthers(BaseVillager.class));
+//
+//        Class[] hostiles = new Class[]{Zombie.class, Pillager.class, Vindicator.class, Vex.class,
+//                Witch.class, Evoker.class, Illusioner.class, Ravager.class};
+//        for (Class clazz : hostiles)
+//            this.targetSelector.addGoal(GOAL_PRIORITY + 1, new NearestAttackableTargetGoal<>(this, clazz, true));
+//        this.goalSelector.addGoal(GOAL_PRIORITY, new TossItemGoal(this, entries.toArray(new TossItemGoal.ItemEntry[0]), 6));
+//    }
 
     /*
      * Interaction methods
      */
+
+    /**
+     * Returns a predicate that determines whether the wolves that this villager owns should pick up an item or not
+     * - only professions that can own wolves will be supported
+     */
+    public Predicate<ItemEntity> getFetchableItemsPredicate() {
+        VillagerProfession profession = this.getProfession();
+        return itemEntity -> {
+            if (itemEntity == null)
+                return false;
+            ItemStack item = itemEntity.getItem();
+
+            boolean wantsItem = false;
+            if (profession == VillagerProfession.BUTCHER) {
+                // Cow
+                wantsItem = item.is(Items.BEEF);
+                // Sheep
+                wantsItem = wantsItem || item.is(Items.MUTTON);
+                // Chicken
+                wantsItem = wantsItem || item.is(Items.CHICKEN);
+                // Pig
+                wantsItem = wantsItem || item.is(Items.PORKCHOP);
+                // Rabbit
+                wantsItem = wantsItem || item.is(Items.RABBIT);
+            } else if (profession == VillagerProfession.FARMER) {
+                // Wheat
+                wantsItem = item.is(Items.WHEAT) || item.is(Items.WHEAT_SEEDS);
+                // Potato
+                wantsItem = wantsItem || item.is(Items.POTATO) || item.is(Items.POISONOUS_POTATO);
+                // Carrot
+                wantsItem = wantsItem || item.is(Items.CARROT);
+                // Beetroot
+                wantsItem = wantsItem || item.is(Items.BEETROOT) || item.is(Items.BEETROOT_SEEDS);
+                // Pumpkin
+                wantsItem = wantsItem || item.is(Items.PUMPKIN);
+                // Melon
+                wantsItem = wantsItem || item.is(Items.MELON);
+                // Sugarcane
+                wantsItem = wantsItem || item.is(Items.SUGAR_CANE);
+            } else if (profession == VillagerProfession.LEATHERWORKER) {
+                // Leather
+                wantsItem = item.is(Items.LEATHER);
+            } else if (profession == VillagerProfession.SHEPHERD) {
+                // Wool (when sheared)
+                wantsItem = item.is(ItemTags.WOOL);
+            }
+
+            // Return false on all other professions
+            return wantsItem;
+        };
+    }
+
+    /**
+     * Returns a predicate that determines whether the villager want an item when trading with another villager
+     */
+    public Predicate<ItemEntity> getTradeItemsPredicate() {
+        VillagerProfession profession = this.getProfession();
+        return itemEntity -> {
+            if (itemEntity == null)
+                return false;
+            ItemStack item = itemEntity.getItem();
+            if (profession == VillagerProfession.NONE || profession == VillagerProfession.NITWIT) {
+                // TODO: do they want anything? potentially food?
+            } else if (profession == VillagerProfession.ARMORER) {
+
+            } else if (profession == VillagerProfession.BUTCHER) {
+
+            } else if (profession == VillagerProfession.CARTOGRAPHER) {
+
+            } else if (profession == VillagerProfession.CLERIC) {
+
+            } else if (profession == VillagerProfession.FARMER) {
+
+            } else if (profession == VillagerProfession.FISHERMAN) {
+
+            } else if (profession == VillagerProfession.FLETCHER) {
+
+            } else if (profession == VillagerProfession.LEATHERWORKER) {
+
+            } else if (profession == VillagerProfession.LIBRARIAN) {
+
+            } else if (profession == VillagerProfession.MASON) {
+
+            } else if (profession == VillagerProfession.SHEPHERD) {
+
+            } else if (profession == VillagerProfession.TOOLSMITH) {
+
+            } else if (profession == VillagerProfession.WEAPONSMITH) {
+
+            }
+
+            // If no early returns, return false
+            return false;
+        };
+    }
 
     /**
      * Receive an item from another entity
@@ -428,7 +522,7 @@ public class BaseVillager extends Villager {
             return false;
 
         this.take(item, item.getItem().getCount());
-        item.remove(RemovalReason.KILLED);
+        item.remove(RemovalReason.DISCARDED);
         MessageUtil.broadcast("&b[DEBUG] Villager received item " + item.getItem() + " - " + item.getItem().getCount() + "!");
         return true;
     }

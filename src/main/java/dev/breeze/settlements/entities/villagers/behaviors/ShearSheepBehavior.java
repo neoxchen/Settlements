@@ -84,7 +84,7 @@ public final class ShearSheepBehavior extends InteractAtEntityBehavior {
 
     @Override
     protected boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime) {
-        if (this.targetSheep == null || this.targetSheep.isDeadOrDying())
+        if (this.targetSheep == null || !this.targetSheep.isAlive())
             return false;
 
         // If we've reached the maximum number of sheep sheared, stop

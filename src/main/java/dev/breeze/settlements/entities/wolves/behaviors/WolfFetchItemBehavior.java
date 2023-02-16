@@ -31,7 +31,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
      * The pick-up range of the wolf
      * - in blocks (squared)
      */
-    private static final double PICK_UP_RANGE_SQUARED = Math.pow(1, 2);
+    private static final double PICK_UP_RANGE_SQUARED = Math.pow(1.8, 2);
 
     /**
      * The drop-off range of the wolf
@@ -43,6 +43,11 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
      * How long will the wolf "rest" after fetching something
      */
     private static final int MAX_FETCH_COOLDOWN = TimeUtil.seconds(10);
+
+    /**
+     * How long will the wolf wait before scanning again
+     */
+    private static final int MAX_SCAN_COOLDOWN = TimeUtil.seconds(10);
 
     /**
      * The maximum duration that the wolf is allowed to fetch something
@@ -87,7 +92,12 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
             return false;
 
         // Try to scan for nearby items
-        return scan(level, self);
+        if (!this.scan(level, self)) {
+            this.cooldown = MAX_SCAN_COOLDOWN;
+            return false;
+        }
+
+        return true;
     }
 
     private boolean scan(@Nonnull ServerLevel level, @Nonnull Wolf self) {

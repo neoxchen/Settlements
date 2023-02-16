@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Dynamic;
+import dev.breeze.settlements.Main;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.wolves.behaviors.TestWolfBehavior;
 import dev.breeze.settlements.entities.wolves.behaviors.WolfFetchItemBehavior;
@@ -50,6 +51,7 @@ import net.minecraft.world.level.pathfinder.PathFinder;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.v1_19_R2.CraftWorld;
 import org.bukkit.event.entity.CreatureSpawnEvent;
@@ -201,7 +203,10 @@ public class VillagerWolf extends Wolf {
     @Override
     protected @Nonnull Brain<?> makeBrain(@Nonnull Dynamic<?> dynamic) {
         Brain<Wolf> brain = this.brainProvider().makeBrain(dynamic);
-        this.registerBrainGoals(brain);
+
+        // Register brain goals a second later (let the owner load first)
+        Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> this.registerBrainGoals(brain), 20L);
+
         return brain;
     }
 
@@ -220,9 +225,15 @@ public class VillagerWolf extends Wolf {
     }
 
     /**
-     * Core components copied from parent class
+     * Register behaviors for a tamed VillagerWolf
+     * - if the owner is null or dead, the wolf will not have any brain behaviors
      */
     private void registerBrainGoals(Brain<Wolf> brain) {
+        if (this.getOwner() == null || !this.getOwner().isAlive()) {
+            LogUtil.warning("Skipping registration of brain goals because owner is not available");
+            return;
+        }
+
         LogUtil.info("Registering wolf brain goals");
 
         // Set activity schedule
@@ -249,7 +260,7 @@ public class VillagerWolf extends Wolf {
         // TODO: Chase sheep behaviors?
         brain.addActivity(Activity.WORK, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(5, WolfSitBehaviorController.stand()))
-                .add(Pair.of(1, new WolfFetchItemBehavior((itemEntity) -> true)))
+                .add(Pair.of(1, new WolfFetchItemBehavior(this.getOwner().getFetchableItemsPredicate())))
                 .build());
         brain.addActivity(Activity.PLAY, new ImmutableList.Builder<Pair<Integer, BehaviorControl<Wolf>>>()
                 .add(Pair.of(5, WolfSitBehaviorController.stand()))

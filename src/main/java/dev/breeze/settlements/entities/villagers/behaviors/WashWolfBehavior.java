@@ -72,7 +72,7 @@ public final class WashWolfBehavior extends InteractAtEntityBehavior {
 
     @Override
     protected boolean checkExtraCanStillUseConditions(ServerLevel level, Villager self, long gameTime) {
-        return this.targetWolf != null && !this.targetWolf.isDeadOrDying();
+        return this.targetWolf != null && this.targetWolf.isAlive();
     }
 
     @Override
