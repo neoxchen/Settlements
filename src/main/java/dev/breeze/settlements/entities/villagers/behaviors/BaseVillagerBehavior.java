@@ -29,7 +29,7 @@ public abstract class BaseVillagerBehavior extends Behavior<Villager> {
         super(requiredMemoryState, runTime);
 
         this.maxStartConditionCheckCooldown = maxStartConditionCheckCooldown;
-        this.startConditionCheckCooldown = 0;
+        this.startConditionCheckCooldown = this.maxStartConditionCheckCooldown;
     }
 
     @Override

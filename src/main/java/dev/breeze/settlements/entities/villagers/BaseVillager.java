@@ -242,6 +242,8 @@ public class BaseVillager extends Villager {
                 wantsItem = wantsItem || item.is(Items.MELON);
                 // Sugarcane
                 wantsItem = wantsItem || item.is(Items.SUGAR_CANE);
+                // Egg
+                wantsItem = wantsItem || item.is(Items.EGG);
             } else if (profession == VillagerProfession.LEATHERWORKER) {
                 // Leather
                 wantsItem = item.is(Items.LEATHER);

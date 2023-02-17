@@ -2,6 +2,7 @@ package dev.breeze.settlements.entities.villagers.behaviors;
 
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.utils.LogUtil;
+import dev.breeze.settlements.utils.MessageUtil;
 import dev.breeze.settlements.utils.RandomUtil;
 import dev.breeze.settlements.utils.TimeUtil;
 import lombok.Getter;
@@ -101,7 +102,7 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
         // Dynamic variables
         // Initial cooldown = random up to max cooldown to prevent spamming
         this.cooldown = RandomUtil.RANDOM.nextInt(this.interactCooldownTicks) + TimeUtil.seconds(10);
-        this.cooldown = 80;
+        this.cooldown = TimeUtil.seconds(10);
 
         this.navigationIntervalTicksLeft = 0;
         this.ticksSpentNavigating = 0;
@@ -114,6 +115,7 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
     protected final boolean checkExtraStartConditionsRateLimited(@Nonnull ServerLevel level, @Nonnull Villager self) {
         // Not -1 because this method is rate limited
         this.cooldown -= this.getMaxStartConditionCheckCooldown();
+        MessageUtil.broadcast("Cooldown for " + this.getClass().getSimpleName() + " is " + this.cooldown);
         if (this.cooldown > 0)
             return false;
         return this.scan(level, self);

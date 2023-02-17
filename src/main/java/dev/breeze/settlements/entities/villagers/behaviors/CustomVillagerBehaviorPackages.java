@@ -21,6 +21,7 @@ import net.minecraft.world.entity.raid.Raid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Mostly copied from VillagerGoalPackages class
@@ -77,31 +78,32 @@ public final class CustomVillagerBehaviorPackages {
         ));
 
         // Assign custom work behaviors based on profession
-        int customGoalWeight = 6;
+        int customGoalWeight = 10;
         if (profession == VillagerProfession.NONE || profession == VillagerProfession.NITWIT) {
             // Do nothing?
         } else if (profession == VillagerProfession.ARMORER) {
             workBehaviors.add(Pair.of(new RepairIronGolemBehavior(), customGoalWeight));
         } else if (profession == VillagerProfession.BUTCHER) {
-
+            workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.PIG, EntityType.RABBIT)), customGoalWeight));
         } else if (profession == VillagerProfession.CARTOGRAPHER) {
 
         } else if (profession == VillagerProfession.CLERIC) {
 
         } else if (profession == VillagerProfession.FARMER) {
-
+            workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.CHICKEN)), customGoalWeight));
         } else if (profession == VillagerProfession.FISHERMAN) {
 
         } else if (profession == VillagerProfession.FLETCHER) {
 
         } else if (profession == VillagerProfession.LEATHERWORKER) {
-
+            workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.COW)), customGoalWeight));
         } else if (profession == VillagerProfession.LIBRARIAN) {
 
         } else if (profession == VillagerProfession.MASON) {
 
         } else if (profession == VillagerProfession.SHEPHERD) {
             workBehaviors.add(Pair.of(new ShearSheepBehavior(), customGoalWeight));
+            workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.SHEEP)), customGoalWeight));
         } else if (profession == VillagerProfession.TOOLSMITH) {
             workBehaviors.add(Pair.of(new RepairIronGolemBehavior(), customGoalWeight));
         } else if (profession == VillagerProfession.WEAPONSMITH) {
