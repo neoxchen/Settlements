@@ -1,12 +1,14 @@
 package dev.breeze.settlements.entities.villagers.behaviors;
 
 import dev.breeze.settlements.Main;
+import dev.breeze.settlements.entities.EntityModuleController;
 import dev.breeze.settlements.utils.SafeRunnable;
 import dev.breeze.settlements.utils.TimeUtil;
 import dev.breeze.settlements.utils.itemstack.ItemStackBuilder;
 import dev.breeze.settlements.utils.particle.ParticleUtil;
 import net.minecraft.core.Rotations;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -115,14 +117,15 @@ public final class ButcherAnimalsBehavior extends InteractAtEntityBehavior {
 
         // Summon armor stand
         this.armorStand = new ArmorStand(level, self.getX(), self.getY(), self.getZ());
-        this.armorStand.setNoGravity(true);
         this.armorStand.setInvisible(true);
+        this.armorStand.setMarker(true);
         this.armorStand.setItemSlot(EquipmentSlot.MAINHAND, IRON_AXE);
-        this.armorStand.setItemSlot(EquipmentSlot.OFFHAND, IRON_AXE);
-        this.armorStand.setLeftArmPose(new Rotations(-90, 0, 0));
-        this.armorStand.setRightArmPose(new Rotations(-90, 0, 0));
+        this.armorStand.setRightArmPose(new Rotations(-90, -40, 30));
 
         level.addFreshEntity(armorStand, CreatureSpawnEvent.SpawnReason.CUSTOM);
+
+        // Add armor stand to temporary entities
+        EntityModuleController.temporaryEntities.add(this.armorStand);
     }
 
     @Override
@@ -191,12 +194,9 @@ public final class ButcherAnimalsBehavior extends InteractAtEntityBehavior {
                 }
 
                 // Swing axe
-                float progress = Math.min(this.elapsed / ANIMATION_LENGTH, 1);
-                float pitch = 90 * (-1 + progress);
-
                 if (armorStand != null) {
-                    armorStand.setLeftArmPose(new Rotations(pitch, 0, 0));
-                    armorStand.setRightArmPose(new Rotations(pitch, 0, 0));
+                    float progress = Math.min(this.elapsed / ANIMATION_LENGTH, 1);
+                    armorStand.setRightArmPose(new Rotations(Mth.lerp(progress, -90, 10), -40, 30));
                 }
 
                 this.elapsed++;
@@ -209,8 +209,10 @@ public final class ButcherAnimalsBehavior extends InteractAtEntityBehavior {
         super.stop(level, self, gameTime);
 
         // Remove armor stand
-        if (this.armorStand != null)
+        if (this.armorStand != null) {
             this.armorStand.remove(Entity.RemovalReason.DISCARDED);
+            EntityModuleController.temporaryEntities.remove(this.armorStand);
+        }
 
         // Remove interaction memory
         self.getBrain().eraseMemory(MemoryModuleType.INTERACTION_TARGET);

@@ -34,12 +34,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Supplier;
 
 public class EntityModuleController extends BaseModuleController {
+
+    public static final Set<Entity> temporaryEntities = new HashSet<>();
 
     @Override
     protected boolean preload(JavaPlugin plugin) {
@@ -70,7 +70,12 @@ public class EntityModuleController extends BaseModuleController {
 
     @Override
     protected void teardown() {
-        // Do nothing (for now?)
+        // Remove all temporary entities
+        temporaryEntities.forEach(entity -> {
+            if (entity == null || !entity.isAlive())
+                return;
+            entity.remove(Entity.RemovalReason.DISCARDED);
+        });
     }
 
     /**
