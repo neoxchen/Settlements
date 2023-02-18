@@ -2,8 +2,10 @@ package dev.breeze.settlements.entities.villagers.memories;
 
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.wolves.VillagerWolf;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.LongTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -26,6 +28,9 @@ public class VillagerMemoryType {
     public static final String REGISTRY_KEY_WALK_DOG_TARGET = "settlements_villager_walk_dog_target_memory";
     public static MemoryModuleType<VillagerWolf> WALK_DOG_TARGET;
 
+    public static final String REGISTRY_KEY_NEAREST_WATER_AREA = "settlements_villager_nearest_water_area_memory";
+    public static MemoryModuleType<BlockPos> NEAREST_WATER_AREA;
+
 
     /**
      * Export important memories to NBT
@@ -37,9 +42,15 @@ public class VillagerMemoryType {
         CompoundTag memories = new CompoundTag();
 
         if (brain.hasMemoryValue(OWNED_DOG)) {
-            memories.put("owned_dog", StringTag.valueOf(brain.getMemory(OWNED_DOG).get().toString()));
+            UUID uuid = brain.getMemory(OWNED_DOG).get();
+            memories.put(REGISTRY_KEY_OWNED_DOG, StringTag.valueOf(uuid.toString()));
         }
-        
+
+        if (brain.hasMemoryValue(NEAREST_WATER_AREA)) {
+            BlockPos pos = brain.getMemory(NEAREST_WATER_AREA).get();
+            memories.put(REGISTRY_KEY_NEAREST_WATER_AREA, LongTag.valueOf(pos.asLong()));
+        }
+
         // Write to NBT tag
         nbt.put(NBT_TAG_NAME, memories);
     }
@@ -55,8 +66,12 @@ public class VillagerMemoryType {
         // Load memories to brain
         Brain<Villager> brain = villager.getBrain();
         CompoundTag memories = nbt.getCompound(NBT_TAG_NAME);
-        if (memories.contains("owned_dog")) {
-            brain.setMemory(OWNED_DOG, UUID.fromString(memories.getString("owned_dog")));
+        if (memories.contains(REGISTRY_KEY_OWNED_DOG)) {
+            brain.setMemory(OWNED_DOG, UUID.fromString(memories.getString(REGISTRY_KEY_OWNED_DOG)));
+        }
+
+        if (memories.contains(REGISTRY_KEY_NEAREST_WATER_AREA)) {
+            brain.setMemory(NEAREST_WATER_AREA, BlockPos.of(memories.getLong(REGISTRY_KEY_NEAREST_WATER_AREA)));
         }
     }
 

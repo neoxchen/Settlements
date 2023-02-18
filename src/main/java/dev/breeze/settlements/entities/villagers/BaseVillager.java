@@ -3,9 +3,9 @@ package dev.breeze.settlements.entities.villagers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
-import dev.breeze.settlements.entities.villagers.behaviors.CustomVillagerBehaviorPackages;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.entities.villagers.navigation.VillagerNavigation;
+import dev.breeze.settlements.entities.villagers.sensors.VillagerSensorType;
 import dev.breeze.settlements.utils.LogUtil;
 import dev.breeze.settlements.utils.MessageUtil;
 import lombok.Getter;
@@ -138,9 +138,15 @@ public class BaseVillager extends Villager {
                     .add(VillagerMemoryType.FENCE_GATE_TO_CLOSE)
                     .add(VillagerMemoryType.WALK_DOG_TARGET)
                     .add(VillagerMemoryType.OWNED_DOG)
+                    .add(VillagerMemoryType.NEAREST_WATER_AREA)
                     .build();
 
-            return Brain.provider(customMemoryTypes, DEFAULT_SENSOR_TYPES);
+            ImmutableList<SensorType<? extends Sensor<Villager>>> customSensorTypes = new ImmutableList.Builder<SensorType<? extends Sensor<Villager>>>()
+                    .addAll(DEFAULT_SENSOR_TYPES)
+                    .add(VillagerSensorType.NEAREST_WATER_AREA)
+                    .build();
+
+            return Brain.provider(customMemoryTypes, customSensorTypes);
         } catch (IllegalAccessException e) {
             LogUtil.exception(e, "Encountered exception when creating custom villager brain!");
             throw new RuntimeException(e);

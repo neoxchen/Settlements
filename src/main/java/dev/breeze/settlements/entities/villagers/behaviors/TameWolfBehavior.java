@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class TameWolfBehavior extends InteractAtEntityBehavior {
+public final class TameWolfBehavior extends InteractAtTargetBehavior {
 
     private static final ItemStack BONE = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.BONE).build());
 

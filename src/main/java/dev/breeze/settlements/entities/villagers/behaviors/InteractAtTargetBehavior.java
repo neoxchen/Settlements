@@ -14,7 +14,7 @@ import net.minecraft.world.entity.npc.Villager;
 import javax.annotation.Nonnull;
 import java.util.Map;
 
-public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
+public abstract class InteractAtTargetBehavior extends BaseVillagerBehavior {
 
     /**
      * Entities outside of this range are ignored
@@ -75,7 +75,7 @@ public abstract class InteractAtEntityBehavior extends BaseVillagerBehavior {
     protected int interactionIntervalTicksLeft;
     protected int ticksSpentInteracting;
 
-    public InteractAtEntityBehavior(Map<MemoryModuleType<?>, MemoryStatus> preconditions,
+    public InteractAtTargetBehavior(Map<MemoryModuleType<?>, MemoryStatus> preconditions,
                                     int scanCooldownTicks, double scanRangeSquared,
                                     int interactCooldownTicks, double interactRangeSquared,
                                     int maxNavigationIntervalTicks, int maxInteractionIntervalTicks,

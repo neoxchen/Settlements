@@ -22,7 +22,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
-public final class ShearSheepBehavior extends InteractAtEntityBehavior {
+public final class ShearSheepBehavior extends InteractAtTargetBehavior {
 
     private static final ItemStack SHEARS = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.SHEARS).build());
 

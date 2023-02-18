@@ -28,7 +28,7 @@ import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
-public final class WashWolfBehavior extends InteractAtEntityBehavior {
+public final class WashWolfBehavior extends InteractAtTargetBehavior {
 
     private static final ItemStack WATER_BUCKET = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.WATER_BUCKET).build());
     private static final ItemStack SPONGE = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.SPONGE).build());

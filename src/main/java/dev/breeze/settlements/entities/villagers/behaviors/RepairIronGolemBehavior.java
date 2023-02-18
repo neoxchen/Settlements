@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class RepairIronGolemBehavior extends InteractAtEntityBehavior {
+public final class RepairIronGolemBehavior extends InteractAtTargetBehavior {
 
     private static final ItemStack IRON_INGOT = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.IRON_INGOT).build());
 

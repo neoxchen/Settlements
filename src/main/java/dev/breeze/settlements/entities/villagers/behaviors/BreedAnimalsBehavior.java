@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class BreedAnimalsBehavior extends InteractAtEntityBehavior {
+public final class BreedAnimalsBehavior extends InteractAtTargetBehavior {
 
     private static final ItemStack WHEAT = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.WHEAT).build());
     private static final ItemStack CARROT = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.CARROT).build());

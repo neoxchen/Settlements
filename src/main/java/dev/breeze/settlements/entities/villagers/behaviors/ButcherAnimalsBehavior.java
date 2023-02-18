@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class ButcherAnimalsBehavior extends InteractAtEntityBehavior {
+public final class ButcherAnimalsBehavior extends InteractAtTargetBehavior {
 
     private static final ItemStack IRON_AXE = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.IRON_AXE).build());
 

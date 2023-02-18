@@ -1,9 +1,10 @@
-package dev.breeze.settlements.entities.villagers.behaviors;
+package dev.breeze.settlements.entities.villagers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
+import dev.breeze.settlements.entities.villagers.behaviors.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
@@ -98,7 +99,7 @@ public final class CustomVillagerBehaviorPackages {
             workBehaviors.add(Pair.of(new TameWolfBehavior(), customGoalWeight));
             workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.CHICKEN)), customGoalWeight));
         } else if (profession == VillagerProfession.FISHERMAN) {
-
+            workBehaviors.add(Pair.of(new FishingBehavior(), customGoalWeight));
         } else if (profession == VillagerProfession.FLETCHER) {
 
         } else if (profession == VillagerProfession.LEATHERWORKER) {

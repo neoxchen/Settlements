@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class FeedWolfBehavior extends InteractAtEntityBehavior {
+public final class FeedWolfBehavior extends InteractAtTargetBehavior {
 
     /**
      * Feedable by butchers level 2 or lower

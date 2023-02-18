@@ -4,6 +4,8 @@ import com.mojang.serialization.Codec;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.villagers.VillagerRestockEvent;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
+import dev.breeze.settlements.entities.villagers.sensors.VillagerNearbyWaterAreaSensor;
+import dev.breeze.settlements.entities.villagers.sensors.VillagerSensorType;
 import dev.breeze.settlements.entities.wolves.VillagerWolf;
 import dev.breeze.settlements.entities.wolves.memories.WolfMemoryType;
 import dev.breeze.settlements.entities.wolves.sensors.WolfNearbyItemsSensor;
@@ -140,6 +142,7 @@ public class EntityModuleController extends BaseModuleController {
         VillagerMemoryType.FENCE_GATE_TO_CLOSE = registerMemory(VillagerMemoryType.REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
         VillagerMemoryType.WALK_DOG_TARGET = registerMemory(VillagerMemoryType.REGISTRY_KEY_WALK_DOG_TARGET, null);
         VillagerMemoryType.OWNED_DOG = registerMemory(VillagerMemoryType.REGISTRY_KEY_OWNED_DOG, null);
+        VillagerMemoryType.NEAREST_WATER_AREA = registerMemory(VillagerMemoryType.REGISTRY_KEY_NEAREST_WATER_AREA, null);
 
         WolfMemoryType.NEARBY_ITEMS = registerMemory(WolfMemoryType.REGISTRY_KEY_NEARBY_ITEMS, null);
         WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_SNIFFABLE_ENTITIES, null);
@@ -175,6 +178,8 @@ public class EntityModuleController extends BaseModuleController {
         frozen.set(registry, false);
 
         // Build & register sensors
+        VillagerSensorType.NEAREST_WATER_AREA = registerSensor(VillagerSensorType.REGISTRY_KEY_NEAREST_WATER_AREA, VillagerNearbyWaterAreaSensor::new);
+
         WolfSensorType.NEARBY_ITEMS = registerSensor(WolfSensorType.REGISTRY_KEY_NEARBY_ITEMS, WolfNearbyItemsSensor::new);
         WolfSensorType.NEARBY_SNIFFABLE_ENTITIES = registerSensor(WolfSensorType.REGISTRY_KEY_NEARBY_SNIFFABLE_ENTITIES, WolfSniffableEntitiesSensor::new);
 

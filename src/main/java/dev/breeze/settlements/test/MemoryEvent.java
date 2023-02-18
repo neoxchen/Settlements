@@ -37,8 +37,10 @@ public class MemoryEvent implements Listener {
             Brain<Villager> brain = villager.getBrain();
             Map<MemoryModuleType<?>, Optional<? extends ExpirableValue<?>>> memories = brain.getMemories();
             MessageUtil.broadcast("&bMemories of villager:");
-            for (Map.Entry<MemoryModuleType<?>, Optional<? extends ExpirableValue<?>>> entry : memories.entrySet())
-                MessageUtil.broadcast("&b - " + entry.getKey().toString() + " : " + entry.getValue());
+            for (Map.Entry<MemoryModuleType<?>, Optional<? extends ExpirableValue<?>>> entry : memories.entrySet()) {
+                String prefix = entry.getKey().toString().contains("settlements") ? "&e" : "&b";
+                MessageUtil.broadcast(prefix + " - " + entry.getKey().toString() + " : " + entry.getValue());
+            }
         }
 
     }
