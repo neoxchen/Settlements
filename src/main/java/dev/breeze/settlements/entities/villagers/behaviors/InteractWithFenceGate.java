@@ -3,17 +3,21 @@ package dev.breeze.settlements.entities.villagers.behaviors;
 import com.google.common.collect.Sets;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.utils.RandomUtil;
+import dev.breeze.settlements.utils.TimeUtil;
 import dev.breeze.settlements.utils.sound.SoundUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.OneShot;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.FenceGateBlock;
@@ -25,9 +29,9 @@ import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.craftbukkit.v1_19_R2.block.CraftBlock;
 import org.bukkit.event.entity.EntityInteractEvent;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.*;
 
 public final class InteractWithFenceGate extends OneShot<Villager> {
@@ -46,7 +50,7 @@ public final class InteractWithFenceGate extends OneShot<Villager> {
 
 
     @Override
-    public boolean trigger(ServerLevel level, Villager villager, long time) {
+    public boolean trigger(@Nonnull ServerLevel level, Villager villager, long time) {
         // Get current path
         Brain<Villager> brain = villager.getBrain();
         if (!brain.hasMemoryValue(MemoryModuleType.PATH))
@@ -238,7 +242,7 @@ public final class InteractWithFenceGate extends OneShot<Villager> {
         return blockState.getValue(FenceGateBlock.OPEN);
     }
 
-    private static void setFenceGateOpen(@Nullable Entity entity, Level level, BlockState state, BlockPos pos, boolean toOpen) {
+    private static void setFenceGateOpen(@Nonnull Entity entity, Level level, BlockState state, BlockPos pos, boolean toOpen) {
         // Ignore if fence gate is already opened/closed
         if (isFenceGateOpen(state) == toOpen)
             return;
@@ -253,6 +257,19 @@ public final class InteractWithFenceGate extends OneShot<Villager> {
 
         // Fire event
         level.gameEvent(entity, toOpen ? GameEvent.BLOCK_OPEN : GameEvent.BLOCK_CLOSE, pos);
+
+        if (!toOpen)
+            return;
+
+        // If open, apply slowness to all entities nearby briefly
+        // - this is to prevent animals from walking out of the fence gate
+        for (Animal nearby : level.getEntitiesOfClass(Animal.class, entity.getBoundingBox().inflate(7, 4, 7))) {
+            if (nearby == null || !nearby.isAlive())
+                continue;
+            nearby.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, TimeUtil.seconds(5), 10, false, false),
+                    entity, EntityPotionEffectEvent.Cause.PLUGIN);
+            nearby.getNavigation().stop();
+        }
     }
 
 }
