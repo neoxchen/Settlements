@@ -247,6 +247,8 @@ public class BaseVillager extends Villager {
             } else if (profession == VillagerProfession.LEATHERWORKER) {
                 // Leather
                 wantsItem = item.is(Items.LEATHER);
+                // Rabbit hide
+                wantsItem = wantsItem || item.is(Items.RABBIT_HIDE);
             } else if (profession == VillagerProfession.SHEPHERD) {
                 // Wool (when sheared)
                 wantsItem = item.is(ItemTags.WOOL);

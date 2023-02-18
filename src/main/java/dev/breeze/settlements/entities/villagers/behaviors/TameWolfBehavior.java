@@ -54,7 +54,7 @@ public final class TameWolfBehavior extends InteractAtEntityBehavior {
                         VillagerMemoryType.OWNED_DOG, MemoryStatus.VALUE_ABSENT,
                         // There should be living entities nearby
                         MemoryModuleType.NEAREST_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
-                ), TimeUtil.minutes(1), Math.pow(20, 2),
+                ), TimeUtil.seconds(20), Math.pow(20, 2),
                 TimeUtil.minutes(5), Math.pow(1.5, 2),
                 5, TimeUtil.seconds(1),
                 TimeUtil.seconds(20), TimeUtil.seconds(10));

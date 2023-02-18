@@ -49,7 +49,7 @@ public final class WashWolfBehavior extends InteractAtEntityBehavior {
                         MemoryModuleType.INTERACTION_TARGET, MemoryStatus.VALUE_ABSENT,
                         // The villager should own a wolf
                         VillagerMemoryType.OWNED_DOG, MemoryStatus.VALUE_PRESENT
-                ), TimeUtil.minutes(1), Math.pow(20, 2),
+                ), TimeUtil.minutes(20), Math.pow(20, 2),
                 TimeUtil.minutes(20), Math.pow(1.5, 2),
                 5, 1,
                 TimeUtil.seconds(30), MAX_WASH_DURATION + MAX_DRY_DURATION);

@@ -18,10 +18,7 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.raid.Raid;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Mostly copied from VillagerGoalPackages class
@@ -84,24 +81,35 @@ public final class CustomVillagerBehaviorPackages {
         } else if (profession == VillagerProfession.ARMORER) {
             workBehaviors.add(Pair.of(new RepairIronGolemBehavior(), customGoalWeight));
         } else if (profession == VillagerProfession.BUTCHER) {
+            workBehaviors.add(Pair.of(new TameWolfBehavior(), customGoalWeight));
             workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.PIG, EntityType.RABBIT)), customGoalWeight));
+            workBehaviors.add(Pair.of(new ButcherAnimalsBehavior(Map.of(
+                    EntityType.COW, 3,
+                    EntityType.SHEEP, 5,
+                    EntityType.CHICKEN, 3,
+                    EntityType.PIG, 3,
+                    EntityType.RABBIT, 3
+            )), customGoalWeight));
         } else if (profession == VillagerProfession.CARTOGRAPHER) {
 
         } else if (profession == VillagerProfession.CLERIC) {
 
         } else if (profession == VillagerProfession.FARMER) {
+            workBehaviors.add(Pair.of(new TameWolfBehavior(), customGoalWeight));
             workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.CHICKEN)), customGoalWeight));
         } else if (profession == VillagerProfession.FISHERMAN) {
 
         } else if (profession == VillagerProfession.FLETCHER) {
 
         } else if (profession == VillagerProfession.LEATHERWORKER) {
+            workBehaviors.add(Pair.of(new TameWolfBehavior(), customGoalWeight));
             workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.COW)), customGoalWeight));
         } else if (profession == VillagerProfession.LIBRARIAN) {
 
         } else if (profession == VillagerProfession.MASON) {
 
         } else if (profession == VillagerProfession.SHEPHERD) {
+            workBehaviors.add(Pair.of(new TameWolfBehavior(), customGoalWeight));
             workBehaviors.add(Pair.of(new ShearSheepBehavior(), customGoalWeight));
             workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.SHEEP)), customGoalWeight));
         } else if (profession == VillagerProfession.TOOLSMITH) {
