@@ -294,7 +294,7 @@ public class VillagerWolf extends Wolf {
     /*
      * Custom navigation for wolves to step over fences
      */
-    private static class WolfNavigation extends GroundPathNavigation {
+    public static class WolfNavigation extends GroundPathNavigation {
 
         public WolfNavigation(Mob entity, Level world) {
             super(entity, world);

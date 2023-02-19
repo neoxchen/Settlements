@@ -7,7 +7,6 @@ import dev.breeze.settlements.entities.fishing_hook.VillagerFishingHook;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
 import dev.breeze.settlements.utils.PacketUtil;
-import dev.breeze.settlements.utils.RandomUtil;
 import dev.breeze.settlements.utils.TimeUtil;
 import dev.breeze.settlements.utils.itemstack.ItemStackBuilder;
 import it.unimi.dsi.fastutil.ints.IntList;
@@ -43,12 +42,6 @@ import java.util.UUID;
 public final class FishingBehavior extends InteractAtTargetBehavior {
 
     private static final ItemStack FISHING_ROD = CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.FISHING_ROD).build());
-    private static final Map<ItemStack, Integer> FISHABLE_ITEMS = Map.of(
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.COD).build()), 60,
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.SALMON).build()), 25,
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.PUFFERFISH).build()), 13,
-            CraftItemStack.asNMSCopy(new ItemStackBuilder(Material.TROPICAL_FISH).build()), 2
-    );
 
     /**
      * How long should the villager wait after a successful catch before casting again
@@ -144,7 +137,7 @@ public final class FishingBehavior extends InteractAtTargetBehavior {
 
         this.recastCooldown = MAX_RECAST_COOLDOWN;
         if (villager instanceof BaseVillager self && this.fakePlayer != null && this.targetWater != null)
-            this.hook = new VillagerFishingHook(self, this.fakePlayer, this.targetWater, RandomUtil.weightedChoice(FISHABLE_ITEMS));
+            this.hook = new VillagerFishingHook(self, this.fakePlayer, this.targetWater);
     }
 
     @Override

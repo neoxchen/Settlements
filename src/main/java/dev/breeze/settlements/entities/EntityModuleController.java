@@ -1,6 +1,7 @@
 package dev.breeze.settlements.entities;
 
 import com.mojang.serialization.Codec;
+import dev.breeze.settlements.entities.cats.VillagerCat;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.villagers.VillagerRestockEvent;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
@@ -49,7 +50,8 @@ public class EntityModuleController extends BaseModuleController {
         try {
             this.registerEntities(Map.of(
                     BaseVillager.ENTITY_TYPE, BaseVillager.getEntityTypeBuilder(),
-                    VillagerWolf.ENTITY_TYPE, VillagerWolf.getEntityTypeBuilder()
+                    VillagerWolf.ENTITY_TYPE, VillagerWolf.getEntityTypeBuilder(),
+                    VillagerCat.ENTITY_TYPE, VillagerCat.getEntityTypeBuilder()
             ));
 
             // Register memories and sensors
@@ -138,12 +140,17 @@ public class EntityModuleController extends BaseModuleController {
         frozen.setAccessible(true);
         frozen.set(registry, false);
 
-        // Build & register memories
+        /*
+         * Build & register memories
+         */
+        // Villager memories
         VillagerMemoryType.FENCE_GATE_TO_CLOSE = registerMemory(VillagerMemoryType.REGISTRY_KEY_FENCE_GATE_TO_CLOSE, null);
-        VillagerMemoryType.WALK_DOG_TARGET = registerMemory(VillagerMemoryType.REGISTRY_KEY_WALK_DOG_TARGET, null);
         VillagerMemoryType.OWNED_DOG = registerMemory(VillagerMemoryType.REGISTRY_KEY_OWNED_DOG, null);
+        VillagerMemoryType.OWNED_CAT = registerMemory(VillagerMemoryType.REGISTRY_KEY_OWNED_CAT, null);
+        VillagerMemoryType.WALK_DOG_TARGET = registerMemory(VillagerMemoryType.REGISTRY_KEY_WALK_DOG_TARGET, null);
         VillagerMemoryType.NEAREST_WATER_AREA = registerMemory(VillagerMemoryType.REGISTRY_KEY_NEAREST_WATER_AREA, null);
 
+        // Wolf memories
         WolfMemoryType.NEARBY_ITEMS = registerMemory(WolfMemoryType.REGISTRY_KEY_NEARBY_ITEMS, null);
         WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_SNIFFABLE_ENTITIES, null);
         WolfMemoryType.RECENTLY_SNIFFED_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_RECENTLY_SNIFFED_ENTITIES, null);
@@ -177,9 +184,13 @@ public class EntityModuleController extends BaseModuleController {
         frozen.setAccessible(true);
         frozen.set(registry, false);
 
-        // Build & register sensors
+        /*
+         * Build & register sensors
+         */
+        // Villager sensors
         VillagerSensorType.NEAREST_WATER_AREA = registerSensor(VillagerSensorType.REGISTRY_KEY_NEAREST_WATER_AREA, VillagerNearbyWaterAreaSensor::new);
 
+        // Wolf sensors
         WolfSensorType.NEARBY_ITEMS = registerSensor(WolfSensorType.REGISTRY_KEY_NEARBY_ITEMS, WolfNearbyItemsSensor::new);
         WolfSensorType.NEARBY_SNIFFABLE_ENTITIES = registerSensor(WolfSensorType.REGISTRY_KEY_NEARBY_SNIFFABLE_ENTITIES, WolfSniffableEntitiesSensor::new);
 

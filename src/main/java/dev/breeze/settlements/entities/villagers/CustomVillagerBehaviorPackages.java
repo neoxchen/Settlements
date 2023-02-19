@@ -97,8 +97,10 @@ public final class CustomVillagerBehaviorPackages {
 
         } else if (profession == VillagerProfession.FARMER) {
             workBehaviors.add(Pair.of(new TameWolfBehavior(), customGoalWeight));
+            workBehaviors.add(Pair.of(new TameCatBehavior(), customGoalWeight));
             workBehaviors.add(Pair.of(new BreedAnimalsBehavior(Set.of(EntityType.CHICKEN)), customGoalWeight));
         } else if (profession == VillagerProfession.FISHERMAN) {
+            workBehaviors.add(Pair.of(new TameCatBehavior(), customGoalWeight));
             workBehaviors.add(Pair.of(new FishingBehavior(), customGoalWeight));
         } else if (profession == VillagerProfession.FLETCHER) {
 
@@ -185,6 +187,11 @@ public final class CustomVillagerBehaviorPackages {
             customMeetBehaviors.add(Pair.of(new TameWolfBehavior(), 1));
         }
 
+        // Tame cat behavior
+        if (profession == VillagerProfession.FARMER || profession == VillagerProfession.FISHERMAN) {
+            customMeetBehaviors.add(Pair.of(new TameCatBehavior(), 1));
+        }
+
         return ImmutableList.of(
                 getFullLookBehavior(),
                 Pair.of(2, TriggerGate.triggerOneShuffled(ImmutableList.of(
@@ -226,6 +233,11 @@ public final class CustomVillagerBehaviorPackages {
                     Pair.of(new WalkDogBehavior(), 1),
                     Pair.of(new WashWolfBehavior(), 1)
             ));
+        }
+
+        // Tame cat behavior (cat should be resting now, so no other behaviors)
+        if (profession == VillagerProfession.FARMER || profession == VillagerProfession.FISHERMAN) {
+            idleBehaviors.add(Pair.of(new TameCatBehavior(), 1));
         }
 
         return ImmutableList.of(

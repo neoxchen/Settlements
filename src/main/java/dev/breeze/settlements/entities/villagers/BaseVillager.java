@@ -136,8 +136,9 @@ public class BaseVillager extends Villager {
             ImmutableList<MemoryModuleType<?>> customMemoryTypes = new ImmutableList.Builder<MemoryModuleType<?>>()
                     .addAll(DEFAULT_MEMORY_TYPES)
                     .add(VillagerMemoryType.FENCE_GATE_TO_CLOSE)
-                    .add(VillagerMemoryType.WALK_DOG_TARGET)
                     .add(VillagerMemoryType.OWNED_DOG)
+                    .add(VillagerMemoryType.OWNED_CAT)
+                    .add(VillagerMemoryType.WALK_DOG_TARGET)
                     .add(VillagerMemoryType.NEAREST_WATER_AREA)
                     .build();
 

@@ -1,6 +1,8 @@
 package dev.breeze.settlements.entities.fishing_hook;
 
+import dev.breeze.settlements.Main;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
+import dev.breeze.settlements.utils.RandomUtil;
 import dev.breeze.settlements.utils.TimeUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -10,15 +12,16 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.animal.*;
 import net.minecraft.world.entity.projectile.FishingHook;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.Vec3;
+import org.bukkit.Bukkit;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 
 import javax.annotation.Nonnull;
@@ -26,17 +29,15 @@ import javax.annotation.Nonnull;
 public class VillagerFishingHook extends FishingHook {
 
     private final BaseVillager villager;
-    private final ItemStack toDrop;
 
     private float fishComeFromAngle;
     private int waitCountdown;
     private int fishTravelCountdown;
 
-    public VillagerFishingHook(@Nonnull BaseVillager villager, @Nonnull ServerPlayer fakePlayer, @Nonnull BlockPos waterPos, @Nonnull ItemStack toDrop) {
+    public VillagerFishingHook(@Nonnull BaseVillager villager, @Nonnull ServerPlayer fakePlayer, @Nonnull BlockPos waterPos) {
         super(EntityType.FISHING_BOBBER, villager.level);
 
         this.villager = villager;
-        this.toDrop = toDrop;
 
         this.fishComeFromAngle = 0;
         this.waitCountdown = Mth.nextInt(this.random, TimeUtil.seconds(5), TimeUtil.seconds(20));
@@ -170,15 +171,42 @@ public class VillagerFishingHook extends FishingHook {
     }
 
     private void reelIn() {
-        ItemEntity item = new ItemEntity(this.level, this.getX(), this.getY(), this.getZ(), this.toDrop);
+        // Spawn random fish
+        double random = RandomUtil.RANDOM.nextDouble();
+        AbstractFish fish;
+        if (random < 0.6) {
+            // 60% chance to spawn cod
+            fish = new Cod(EntityType.COD, this.level);
+        } else if (random < 0.85) {
+            // 25% chance to spawn salmon
+            fish = new Salmon(EntityType.SALMON, this.level);
+        } else if (random < 0.95) {
+            // 10% chance to spawn puffer fish
+            fish = new Pufferfish(EntityType.PUFFERFISH, this.level);
+        } else {
+            // 5% chance to spawn tropical fish
+            fish = new TropicalFish(EntityType.TROPICAL_FISH, this.level);
+        }
 
+        // Set fish to be flying out of the water at the villager
+        fish.setPos(this.getX(), this.getY(), this.getZ());
         double dx = this.villager.getX() - this.getX();
         double dy = this.villager.getY() - this.getY();
         double dz = this.villager.getZ() - this.getZ();
-        double scale = 0.1;
-        item.setDeltaMovement(dx * scale, dy * scale + Math.sqrt(Math.sqrt(dx * dx + dy * dy + dz * dz)) * 0.15D, dz * scale);
-        this.level.addFreshEntity(item);
+        double scale = 0.3;
+        fish.setDeltaMovement(dx * scale, dy * scale + 0.3, dz * scale);
 
+        // Set to auto die after a while
+        Bukkit.getScheduler().scheduleSyncDelayedTask(Main.getPlugin(), () -> {
+            if (!fish.isAlive())
+                return;
+            fish.hurt(DamageSource.DROWN, Float.MAX_VALUE);
+        }, TimeUtil.seconds(10));
+
+        // Add entity to world
+        this.level.addFreshEntity(fish);
+
+        // Stop fishing since we've fished something up
         this.stopFishing();
     }
 

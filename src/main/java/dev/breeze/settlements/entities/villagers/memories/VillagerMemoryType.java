@@ -22,8 +22,11 @@ public class VillagerMemoryType {
     public static final String REGISTRY_KEY_FENCE_GATE_TO_CLOSE = "settlements_villager_fence_gates_to_close_memory";
     public static MemoryModuleType<Set<GlobalPos>> FENCE_GATE_TO_CLOSE;
 
-    public static final String REGISTRY_KEY_OWNED_DOG = "settlements_villager_owned_dogs_memory";
+    public static final String REGISTRY_KEY_OWNED_DOG = "settlements_villager_owned_dog_memory";
     public static MemoryModuleType<UUID> OWNED_DOG;
+
+    public static final String REGISTRY_KEY_OWNED_CAT = "settlements_villager_owned_cat_memory";
+    public static MemoryModuleType<UUID> OWNED_CAT;
 
     public static final String REGISTRY_KEY_WALK_DOG_TARGET = "settlements_villager_walk_dog_target_memory";
     public static MemoryModuleType<VillagerWolf> WALK_DOG_TARGET;
@@ -44,6 +47,11 @@ public class VillagerMemoryType {
         if (brain.hasMemoryValue(OWNED_DOG)) {
             UUID uuid = brain.getMemory(OWNED_DOG).get();
             memories.put(REGISTRY_KEY_OWNED_DOG, StringTag.valueOf(uuid.toString()));
+        }
+
+        if (brain.hasMemoryValue(OWNED_CAT)) {
+            UUID uuid = brain.getMemory(OWNED_CAT).get();
+            memories.put(REGISTRY_KEY_OWNED_CAT, StringTag.valueOf(uuid.toString()));
         }
 
         if (brain.hasMemoryValue(NEAREST_WATER_AREA)) {
@@ -68,6 +76,10 @@ public class VillagerMemoryType {
         CompoundTag memories = nbt.getCompound(NBT_TAG_NAME);
         if (memories.contains(REGISTRY_KEY_OWNED_DOG)) {
             brain.setMemory(OWNED_DOG, UUID.fromString(memories.getString(REGISTRY_KEY_OWNED_DOG)));
+        }
+
+        if (memories.contains(REGISTRY_KEY_OWNED_CAT)) {
+            brain.setMemory(OWNED_CAT, UUID.fromString(memories.getString(REGISTRY_KEY_OWNED_CAT)));
         }
 
         if (memories.contains(REGISTRY_KEY_NEAREST_WATER_AREA)) {
