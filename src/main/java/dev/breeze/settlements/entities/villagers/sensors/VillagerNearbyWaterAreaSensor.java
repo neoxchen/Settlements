@@ -9,6 +9,7 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import org.bukkit.World;
@@ -35,7 +36,7 @@ public class VillagerNearbyWaterAreaSensor extends Sensor<Villager> {
      * How often will the villager scan for nearby water areas
      * - should be infrequent as terrain doesn't change that much
      */
-    private static final int SENSE_COOLDOWN = TimeUtil.minutes(10);
+    private static final int SENSE_COOLDOWN = TimeUtil.minutes(5);
 
     public VillagerNearbyWaterAreaSensor() {
         super(SENSE_COOLDOWN);
@@ -48,8 +49,14 @@ public class VillagerNearbyWaterAreaSensor extends Sensor<Villager> {
             return;
 
         Brain<Villager> brain = self.getBrain();
-        Optional<BlockPos> nearestWaterArea = this.findNearestWaterArea(world, villager);
 
+        // Check activity == WORK
+        // - cause if we sensed at non-work activities, the water location might be far away from our worksite
+        if (brain.getSchedule().getActivityAt((int) world.getWorld().getTime()) != Activity.WORK)
+            return;
+
+        // Detect nearby water areas
+        Optional<BlockPos> nearestWaterArea = this.findNearestWaterArea(world, villager);
         if (nearestWaterArea.isEmpty())
             brain.eraseMemory(VillagerMemoryType.NEAREST_WATER_AREA);
         else

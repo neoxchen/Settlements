@@ -25,7 +25,7 @@ public final class WolfFetchItemBehavior extends BaseWolfBehavior {
     /**
      * What speed will the wolf move at when fetching
      */
-    private static final float SPEED_MODIFIER = 1.25F;
+    private static final float SPEED_MODIFIER = 1.15F;
 
     /**
      * The pick-up range of the wolf

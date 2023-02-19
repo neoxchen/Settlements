@@ -5,10 +5,13 @@ import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Dynamic;
 import dev.breeze.settlements.Main;
+import dev.breeze.settlements.entities.cats.behaviors.CatFetchOrEatBehavior;
 import dev.breeze.settlements.entities.cats.goals.CatFollowOwnerGoal;
 import dev.breeze.settlements.entities.cats.goals.CatLookLockGoal;
 import dev.breeze.settlements.entities.cats.goals.CatMovementLockGoal;
 import dev.breeze.settlements.entities.cats.goals.CatSitWhenOrderedToGoal;
+import dev.breeze.settlements.entities.cats.memories.CatMemoryType;
+import dev.breeze.settlements.entities.cats.sensors.CatSensorType;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.wolves.VillagerWolf;
 import dev.breeze.settlements.utils.LogUtil;
@@ -94,8 +97,8 @@ public class VillagerCat extends Cat {
             this.setCollarColor(DyeColor.WHITE);
         }
 
-        // Set step height to 5 (cause cats)
-        this.maxUpStep = 5;
+        // Set step height to 3 (cause cats)
+        this.maxUpStep = 3;
 
         this.stopFollowOwner = false;
         this.lookLocked = false;
@@ -142,7 +145,7 @@ public class VillagerCat extends Cat {
         this.goalSelector.removeAllGoals((goal -> goal instanceof SitWhenOrderedToGoal || goal instanceof FollowOwnerGoal));
         // Add replacement goals
         this.goalSelector.addGoal(1, new CatSitWhenOrderedToGoal(this));
-        this.goalSelector.addGoal(6, new CatFollowOwnerGoal(this, 1.0D, 15.0F, 8.0F, false));
+        this.goalSelector.addGoal(6, new CatFollowOwnerGoal(this, 1.0D, 10.0F, 8.0F, false));
 
         // Add look-lock goal (prevent cat from looking away in other goals)
         this.goalSelector.addGoal(1, new CatLookLockGoal(this));
@@ -165,13 +168,10 @@ public class VillagerCat extends Cat {
     @Override
     protected @Nonnull Brain.Provider<Cat> brainProvider() {
         ImmutableList<MemoryModuleType<?>> memoryTypes = new ImmutableList.Builder<MemoryModuleType<?>>()
-//                .add(WolfMemoryType.NEARBY_ITEMS)
-//                .add(WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES)
-//                .add(WolfMemoryType.RECENTLY_SNIFFED_ENTITIES)
+                .add(CatMemoryType.NEARBY_ITEMS)
                 .build();
         ImmutableList<SensorType<? extends Sensor<Cat>>> sensorTypes = new ImmutableList.Builder<SensorType<? extends Sensor<Cat>>>()
-//                .add(WolfSensorType.NEARBY_ITEMS)
-//                .add(WolfSensorType.NEARBY_SNIFFABLE_ENTITIES)
+                .add(CatSensorType.NEARBY_ITEMS)
                 .build();
         return Brain.provider(memoryTypes, sensorTypes);
     }
@@ -220,12 +220,12 @@ public class VillagerCat extends Cat {
         brain.addActivity(Activity.CORE, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Cat>>>()
                 .build());
         brain.addActivity(Activity.WORK, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Cat>>>()
-//                .add(Pair.of(2, WolfSitBehaviorController.stand()))
+                .add(Pair.of(2, new CatFetchOrEatBehavior()))
 //                .add(Pair.of(3, new WolfFetchItemBehavior(this.getOwner().getFetchableItemsPredicate())))
                 .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());
         brain.addActivity(Activity.PLAY, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Cat>>>()
-//                .add(Pair.of(2, WolfSitBehaviorController.stand()))
+                .add(Pair.of(2, new CatFetchOrEatBehavior()))
 //                .add(Pair.of(3, new WolfWalkBehavior()))
                 .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());

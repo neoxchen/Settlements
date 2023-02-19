@@ -2,6 +2,9 @@ package dev.breeze.settlements.entities;
 
 import com.mojang.serialization.Codec;
 import dev.breeze.settlements.entities.cats.VillagerCat;
+import dev.breeze.settlements.entities.cats.memories.CatMemoryType;
+import dev.breeze.settlements.entities.cats.sensors.CatNearbyItemsSensor;
+import dev.breeze.settlements.entities.cats.sensors.CatSensorType;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
 import dev.breeze.settlements.entities.villagers.VillagerRestockEvent;
 import dev.breeze.settlements.entities.villagers.memories.VillagerMemoryType;
@@ -155,6 +158,9 @@ public class EntityModuleController extends BaseModuleController {
         WolfMemoryType.NEARBY_SNIFFABLE_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_SNIFFABLE_ENTITIES, null);
         WolfMemoryType.RECENTLY_SNIFFED_ENTITIES = registerMemory(WolfMemoryType.REGISTRY_KEY_RECENTLY_SNIFFED_ENTITIES, null);
 
+        // Cat memories
+        CatMemoryType.NEARBY_ITEMS = registerMemory(CatMemoryType.REGISTRY_KEY_NEARBY_ITEMS, null);
+
         // Re-freeze registry
         LogUtil.info("Re-freezing memory module type registry...");
         BuiltInRegistries.MEMORY_MODULE_TYPE.freeze();
@@ -193,6 +199,9 @@ public class EntityModuleController extends BaseModuleController {
         // Wolf sensors
         WolfSensorType.NEARBY_ITEMS = registerSensor(WolfSensorType.REGISTRY_KEY_NEARBY_ITEMS, WolfNearbyItemsSensor::new);
         WolfSensorType.NEARBY_SNIFFABLE_ENTITIES = registerSensor(WolfSensorType.REGISTRY_KEY_NEARBY_SNIFFABLE_ENTITIES, WolfSniffableEntitiesSensor::new);
+
+        // Cat sensors
+        CatSensorType.NEARBY_ITEMS = registerSensor(CatSensorType.REGISTRY_KEY_NEARBY_ITEMS, CatNearbyItemsSensor::new);
 
         // Re-freeze registry
         LogUtil.info("Re-freezing sensor type registry...");
