@@ -6,6 +6,8 @@ import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Dynamic;
 import dev.breeze.settlements.Main;
 import dev.breeze.settlements.entities.cats.behaviors.CatFetchOrEatBehavior;
+import dev.breeze.settlements.entities.cats.behaviors.CatFollowOwnerBehaviorController;
+import dev.breeze.settlements.entities.cats.behaviors.CatSleepBehavior;
 import dev.breeze.settlements.entities.cats.goals.CatFollowOwnerGoal;
 import dev.breeze.settlements.entities.cats.goals.CatLookLockGoal;
 import dev.breeze.settlements.entities.cats.goals.CatMovementLockGoal;
@@ -13,7 +15,6 @@ import dev.breeze.settlements.entities.cats.goals.CatSitWhenOrderedToGoal;
 import dev.breeze.settlements.entities.cats.memories.CatMemoryType;
 import dev.breeze.settlements.entities.cats.sensors.CatSensorType;
 import dev.breeze.settlements.entities.villagers.BaseVillager;
-import dev.breeze.settlements.entities.wolves.VillagerWolf;
 import dev.breeze.settlements.utils.LogUtil;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,6 +24,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.ai.behavior.UpdateActivityFromSchedule;
 import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
@@ -76,7 +78,7 @@ public class VillagerCat extends Cat {
         super(EntityType.CAT, ((CraftWorld) location.getWorld()).getHandle());
         this.setPos(location.getX(), location.getY(), location.getZ());
         if (!this.level.addFreshEntity(this, CreatureSpawnEvent.SpawnReason.CUSTOM)) {
-            throw new IllegalStateException("Failed to add custom wolf to world");
+            throw new IllegalStateException("Failed to add custom cat to world");
         }
 
         this.init();
@@ -84,14 +86,14 @@ public class VillagerCat extends Cat {
 
     private void init() {
         // Use the same navigation as wolves to ignore fences
-        this.navigation = new VillagerWolf.WolfNavigation(this, this.level);
+//        this.navigation = new VillagerWolf.WolfNavigation(this, this.level);
 
         // Configure pathfinder goals
         this.initGoals();
 
         // If not "tamed" already
         if (this.getOwnerUUID() == null) {
-            // Set wolf to be tamed by a "null" UID
+            // Set cat to be tamed by a "null" UID
             this.setTame(true);
             this.setOwnerUUID(null);
             this.setCollarColor(DyeColor.WHITE);
@@ -195,8 +197,8 @@ public class VillagerCat extends Cat {
     }
 
     /**
-     * Register behaviors for a tamed VillagerWolf
-     * - if the owner is null or dead, the wolf will not have any brain behaviors
+     * Register behaviors for a tamed VillagerCat
+     * - if the owner is null or dead, the cat will not have any brain behaviors
      */
     private void registerBrainGoals(Brain<Cat> brain) {
         if (this.getOwner() == null || !this.getOwner().isAlive()) {
@@ -221,16 +223,18 @@ public class VillagerCat extends Cat {
                 .build());
         brain.addActivity(Activity.WORK, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Cat>>>()
                 .add(Pair.of(2, new CatFetchOrEatBehavior()))
-//                .add(Pair.of(3, new WolfFetchItemBehavior(this.getOwner().getFetchableItemsPredicate())))
+                .add(Pair.of(5, CatFollowOwnerBehaviorController.startFollowOwner()))
                 .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());
         brain.addActivity(Activity.PLAY, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Cat>>>()
                 .add(Pair.of(2, new CatFetchOrEatBehavior()))
-//                .add(Pair.of(3, new WolfWalkBehavior()))
+                .add(Pair.of(5, CatFollowOwnerBehaviorController.stopFollowOwner()))
                 .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());
         brain.addActivity(Activity.REST, new ImmutableList.Builder<Pair<Integer, BehaviorControl<? super Cat>>>()
-//                .add(Pair.of(2, WolfSitBehaviorController.sit()))
+                .add(Pair.of(1, new CatSleepBehavior()))
+//                .add(Pair.of(2, new CatWalkToBedBehavior()))
+                .add(Pair.of(5, CatFollowOwnerBehaviorController.stopFollowOwner()))
                 .add(Pair.of(99, UpdateActivityFromSchedule.create()))
                 .build());
 
@@ -264,6 +268,9 @@ public class VillagerCat extends Cat {
         this.setOwnerUUID(villager.getUUID());
         this.setCollarColor(DyeColor.LIME);
         this.setVariant(variant);
+
+        this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(20.0D);
+        this.setHealth(this.getMaxHealth());
     }
 
 }

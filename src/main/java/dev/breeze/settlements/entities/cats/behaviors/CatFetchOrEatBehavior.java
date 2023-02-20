@@ -16,6 +16,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.animal.Cat;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -53,9 +54,14 @@ public final class CatFetchOrEatBehavior extends BaseCatBehavior {
      * The chance of the cat eating the fish instead of fetching it
      * - TODO: perhaps change this by cat variant? e.g. orange cats eats more often
      */
-    private static final double EAT_PROBABILITY = 0.3;
+    private static final double INITIAL_EAT_PROBABILITY = 0.3;
+    /**
+     * If the cat's HP falls below this threshold, it will always eat the fish
+     */
+    private static final double EAT_HP_THRESHOLD = 0.25;
 
     private int cooldown;
+    private double eatProbability = INITIAL_EAT_PROBABILITY;
     private int eatDuration;
 
     private FetchStatus status;
@@ -148,6 +154,12 @@ public final class CatFetchOrEatBehavior extends BaseCatBehavior {
             villagerCat.setStopFollowOwner(true);
             villagerCat.setLookLocked(true);
             villagerCat.setMovementLocked(true);
+
+            // If owner is not working or HP is too low, always eat the fish
+            if ((villagerCat.getOwner() != null && !villagerCat.getOwner().getBrain().isActive(Activity.WORK))
+                    || villagerCat.getHealth() / villagerCat.getMaxHealth() < EAT_HP_THRESHOLD) {
+                this.eatProbability = 1;
+            }
         }
     }
 
@@ -168,7 +180,7 @@ public final class CatFetchOrEatBehavior extends BaseCatBehavior {
             } else {
                 // We are close enough to the item to pick it up
                 // Determine if the cat is going to eat it or fetch it
-                if (RandomUtil.RANDOM.nextDouble() < EAT_PROBABILITY) {
+                if (RandomUtil.RANDOM.nextDouble() < this.eatProbability) {
                     // Set eat item
                     this.eatItem = CraftItemStack.asBukkitCopy(this.target.getItem());
 
@@ -212,9 +224,12 @@ public final class CatFetchOrEatBehavior extends BaseCatBehavior {
             }
         } else if (this.status == FetchStatus.EATING) {
             if (--this.eatDuration < 0) {
-                // If ate puffer fish, add poison
                 if (this.eatItem != null && this.eatItem.getType() == Material.PUFFERFISH) {
+                    // If ate puffer fish, add poison
                     self.addEffect(new MobEffectInstance(MobEffects.POISON, TimeUtil.seconds(2), 1));
+                } else {
+                    // Otherwise, add regeneration
+                    self.addEffect(new MobEffectInstance(MobEffects.REGENERATION, TimeUtil.seconds(5), 1));
                 }
                 this.stop(level, self, gameTime);
                 return;
@@ -239,6 +254,7 @@ public final class CatFetchOrEatBehavior extends BaseCatBehavior {
         super.stop(level, self, gameTime);
 
         this.cooldown = MAX_FETCH_COOLDOWN;
+        this.eatProbability = INITIAL_EAT_PROBABILITY;
         this.eatDuration = 0;
         this.status = FetchStatus.STAND_BY;
 

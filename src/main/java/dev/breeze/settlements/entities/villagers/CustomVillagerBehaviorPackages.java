@@ -55,7 +55,8 @@ public final class CustomVillagerBehaviorPackages {
                 Pair.of(10, AcquirePoi.create((poiType) -> poiType.is(PoiTypes.HOME), MemoryModuleType.HOME, false, Optional.of((byte) 14))),
                 Pair.of(10, AcquirePoi.create((poiType) -> poiType.is(PoiTypes.MEETING), MemoryModuleType.MEETING_POINT, true, Optional.of((byte) 14))),
                 Pair.of(10, AssignProfessionFromJobSite.create()),
-                Pair.of(10, ResetProfession.create())
+                Pair.of(10, ResetProfession.create()),
+                Pair.of(20, ScanForPetsBehaviorController.scanForPets()) // Custom behavior
         );
     }
 
